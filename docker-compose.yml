@@ -1,0 +1,51 @@
+services:
+
+  db:
+    image: mysql:8.0
+    container_name: soa_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+#Redis + celery asincronismo entre la recepción de la imagen (API) y su procesamiento(YOLO), cosa de q el usuario no tenga q esperar
+#redis (Broker): lista de tareas.
+#celery (Worker): proceso en segundo plano que se dedica EXCLUSIVAMENTE a ejecutar YOLO.
+#la API recibe la foto, la guarda en SeaweedFS, anota en MySQL que el fotograma está "En Proceso", y deja un "ticket" en Redis. 
+#le responde al usuario "Imagen recibida, tu ID es X". Por atras, Celery toma ese ticket de Redis, ejecuta YOLO  y actualiza la base de datos con los resultados finales.
+  redis:
+    image: redis:alpine
+    container_name: soa_redis
+    ports:
+      - "6379:6379"
+
+  # SeaweedFS Master (Gestiona los volúmenes y metadata)
+  seaweed_master:
+    image: chrislusf/seaweedfs
+    container_name: soa_seaweed_master
+    ports:
+      - "9333:9333"
+      - "19333:19333"
+    command: "master -ip=seaweed_master"
+
+  # SeaweedFS Volume (Donde realmente se guardan los archivos)
+  seaweed_volume:
+    image: chrislusf/seaweedfs
+    container_name: soa_seaweed_volume
+    ports:
+      - "8080:8080"
+      - "18080:18080"
+    command: "volume -mserver=seaweed_master:9333 -port=8080 -ip=seaweed_volume"
+    depends_on:
+      - seaweed_master
+    volumes:
+      - seaweed_data:/data
+
+volumes:
+  mysql_data:
+  seaweed_data:
