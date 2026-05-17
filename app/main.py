@@ -8,6 +8,7 @@ from app.api.routes_s1 import router as s1_router
 from app.api.routes_s2 import router as s2_router
 from app.api.routes_s3 import router as s3_router
 from app.api.routes_s4 import router as s4_router
+from app.api.routes_s5 import router as s5_router
 from app.database.session import Base, engine
 
 app = FastAPI(
@@ -22,6 +23,7 @@ app.include_router(s1_router, prefix="/api/v1", tags=["Models"])
 app.include_router(s2_router, prefix="/api/v1", tags=["Detections"])
 app.include_router(s3_router, prefix="/api/v1", tags=["Frames"])
 app.include_router(s4_router, prefix="/api/v1", tags=["Frames"])
+app.include_router(s5_router, prefix="/api/v1", tags=["Persons"])
 
 
 @app.on_event("startup")

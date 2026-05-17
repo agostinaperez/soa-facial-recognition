@@ -40,3 +40,20 @@ class FrameCreateResponse(BaseModel):
 
     frame_id: str
     message: str
+
+
+class PersonCreate(BaseModel):
+    nombre: str
+    apellido: str
+    email: str
+    extra: Optional[dict[str, Any]] = None
+
+
+class PersonResponse(BaseModel):
+    personId: str
+    nombre: str
+    apellido: str
+    email: str
+    extra: Optional[dict[str, Any]] = None
+
+    model_config = ConfigDict(from_attributes=True)

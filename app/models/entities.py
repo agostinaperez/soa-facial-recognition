@@ -1,5 +1,5 @@
 
-# Modelos SQLAlchemy para las tablas frames y detections.
+# Modelos SQLAlchemy para las tablas frames, detections y persons.
 import uuid
 from datetime import datetime, timezone
 
@@ -57,3 +57,14 @@ class Detection(Base):
     bounding_box = Column(JSON, nullable=False)
     #relacion manyToOne con frame, back_populates para acceso bidireccional
     frame = relationship("Frame", back_populates="detections")
+
+
+class Person(Base):
+
+    __tablename__ = "persons"
+
+    personId = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    nombre = Column(String(255), nullable=False)
+    apellido = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=False, unique=True)
+    extra = Column(JSON, nullable=True)
