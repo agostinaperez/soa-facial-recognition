@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 class DetectionResponse(BaseModel):
     
     # DTO para serializar una detección individual.
-    id: str
+    id: int
     class_name: str
     confidence: float
     bounding_box: dict[str, Any]
@@ -38,7 +38,7 @@ class FrameCreateResponse(BaseModel):
     # DTO para la respuesta inmediata del POST /detections.
     # Se devuelve antes de que el worker termine la inferencia.
 
-    frame_id: str
+    frame_id: int
     message: str
 
 
@@ -50,7 +50,7 @@ class PersonCreate(BaseModel):
 
 
 class PersonResponse(BaseModel):
-    personId: str
+    personId: int
     nombre: str
     apellido: str
     email: str

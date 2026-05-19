@@ -3,7 +3,7 @@
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, String
+from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
 from app.database.session import Base
@@ -14,11 +14,7 @@ class Frame(Base):
     
     __tablename__ = "frames"
 
-    id = Column(
-        String(36),
-        primary_key=True,
-        default=lambda: str(uuid.uuid4()),
-    )
+    frameId = Column(Integer, primary_key=True, autoincrement=True)
     model_id = Column(String(255), nullable=False)
     latitude = Column(Float, nullable=True)
     longitude = Column(Float, nullable=True)
@@ -42,14 +38,10 @@ class Detection(Base):
     
     __tablename__ = "detections"
 
-    id = Column(
-        String(36),
-        primary_key=True,
-        default=lambda: str(uuid.uuid4()),
-    )
+    detectionId = Column(Integer, primary_key=True, autoincrement=True)
     frame_id = Column(
-        String(36),
-        ForeignKey("frames.id", ondelete="CASCADE"),
+        Integer,
+        ForeignKey("frames.frameId", ondelete="CASCADE"),
         nullable=False,
     )
     class_name = Column(String(255), nullable=False)
@@ -63,7 +55,7 @@ class Person(Base):
 
     __tablename__ = "persons"
 
-    personId = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    personId = Column(Integer, primary_key=True, autoincrement=True)
     nombre = Column(String(255), nullable=False)
     apellido = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
