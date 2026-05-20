@@ -17,15 +17,9 @@ def upload_image(file_bytes: bytes, filename: str) -> str:
         assign.raise_for_status()
         data = assign.json()
         file_id: str = data["fid"]
-        public_url: str = data.get("publicUrl", data.get("url", ""))
 
-        endpoint = (
-            f"http://{public_url}/{file_id}"
-            if public_url
-            else f"{SEAWEED_VOLUME}/{file_id}"
-        )
-        # Sube el archivo al servidor de volumen.
-        upload = client.post(endpoint, content=file_bytes)
+        endpoint = f"{SEAWEED_VOLUME}/{file_id}"
+        upload = client.post(endpoint, files={"file": (filename, file_bytes)})
         upload.raise_for_status()
     # Retorna el file_id (identificador único en SeaweedFS).
     return file_id
