@@ -18,8 +18,26 @@ celery_app = Celery("soa_worker", broker=REDIS_URL, backend=REDIS_URL)
 
 @celery_app.task
 def run_inference(frame_id: str) -> dict:
+    """Ejecuta la inferencia de detección de objetos vía YOLO sobre un frame específico.
 
-    # Ejecuta inferencia YOLO sobre el frame.
+    Esta tarea en segundo plano encapsula el pipeline analítico completo:
+    1. Obtiene la metadata y el modelo objetivo desde el repositorio relacional (MySQL).
+    2. Descarga el archivo binario del frame desde el almacenamiento de objetos (SeaweedFS).
+    3. Ejecuta el motor de inferencia de redes neuronales (YOLO Core).
+    4. Persiste los resultados estructurados (bounding boxes) en la base de datos.
+
+    Args:
+        frame_id (str): Identificador único global (UUID) del fotograma a procesar.
+
+    Returns:
+        Dict[str, Any]: Resumen de la ejecución que contiene el ID del frame 
+                        y la cantidad total de objetos detectados.
+
+    Raises:
+        Exception: Si ocurre un fallo de red, transaccional o en la inferencia del 
+                   modelo. Genera un rollback automático de la transacción.
+    """
+
     db = SessionLocal()
     try:
         from app.models.entities import Frame
