@@ -20,8 +20,8 @@ app = FastAPI(
 # Montar todos los routers bajo el prefijo /api/v1
 app.include_router(s1_router, prefix="/api/v1", tags=["Models"])
 app.include_router(s2_router, prefix="/api/v1", tags=["Detections"])
-app.include_router(s3_router, prefix="/api/v1", tags=["Frames"])
 app.include_router(s4_router, prefix="/api/v1", tags=["Frames"])
+app.include_router(s3_router, prefix="/api/v1", tags=["Frames"])
 
 
 @app.on_event("startup")

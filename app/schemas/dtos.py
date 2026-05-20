@@ -40,3 +40,13 @@ class FrameCreateResponse(BaseModel):
 
     frame_id: str
     message: str
+
+class FrameSearchResponse(BaseModel):
+    # DTO para la respuesta del endpoint de búsqueda de fotogramas
+    # que incluye la URL de la imagen y las detecciones anidadas.
+    
+    frameId: str
+    imageURL: str
+    metadata: Optional[dict[str, Any]] = None
+    detections: list[DetectionResponse] = []
+    model_config = ConfigDict(from_attributes=False)

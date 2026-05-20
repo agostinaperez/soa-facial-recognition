@@ -10,28 +10,35 @@
 
 # Todos los filtros son opcionales y combinables. Si no se envía ningún filtro, devuekve todos los frames.
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
 from app.models.entities import Detection, Frame
-from app.schemas.dtos import FrameResponse
+from app.schemas.dtos import FrameSearchResponse, DetectionResponse
 
 router = APIRouter()
 
 
-@router.get("/frames/search", response_model=list[FrameResponse])
+@router.get("/frames/search", response_model=list[FrameSearchResponse])
 def search_frames(
+    request: Request,
     min_lat: float = Query(None),
     max_lat: float = Query(None),
     min_lon: float = Query(None),
     max_lon: float = Query(None),
     detected_class: str = Query(None),
-    metadata_key: str = Query(None),
-    metadata_value: str = Query(None),
+    metadata_key: list[str] = Query(None),
+    metadata_value: list[str] = Query(None),
     db: Session = Depends(get_db),
 ) -> list[Frame]:
-    
+
+    if metadata_key and metadata_value and len(metadata_key) != len(metadata_value):
+        raise HTTPException(
+            status_code=422,
+            detail="metadata_key y metadata_value deben tener la misma cantidad de elementos",
+        )
+
     query = db.query(Frame)
 
     # Filtro por rango de latitud
@@ -54,10 +61,20 @@ def search_frames(
             Detection.class_name == detected_class
         )
 
-    # Filtro por campo JSON extra_metadata
-    if metadata_key is not None and metadata_value is not None:
-        query = query.filter(
-            Frame.extra_metadata[metadata_key].as_string() == metadata_value
-        )
+    # Filtro por uno o varios pares clave/valor dentro del JSON extra_metadata
+    if metadata_key and metadata_value:
+        for key, value in zip(metadata_key, metadata_value):
+            query = query.filter(
+                Frame.extra_metadata[key].as_string() == value
+            )
+    frames = query.all()
+    result = []
+    for frame in frames:
+        result.append(FrameSearchResponse(
+            frameId = frame.id,
+            imageURL=str(request.base_url) + f"api/v1/frames/{frame.id}",
+            metadata = frame.extra_metadata,
+            detections = [DetectionResponse.model_validate(d) for d in frame.detections]
+        ))
+    return result
 
-    return query.all()

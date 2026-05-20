@@ -1,5 +1,8 @@
 __pycache__/
 *.py[cod]
 venv/
+.venv/
 weights/
 .env
+Trabajo Integrador SOA 2026.pdf
+CLAUDE.md
