@@ -45,7 +45,7 @@ async def create_detection(
         model_id=model_id,
         latitude=latitude,
         longitude=longitude,
-        extra_metadata=json.loads(extra_metadata),
+        extra_metadata=json.loads(metadata_dict),
         image_url=seaweed_fid,
     )
     db.add(frame)
