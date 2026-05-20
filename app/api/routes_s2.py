@@ -15,7 +15,7 @@ from app.worker.tasks import run_inference
 
 router = APIRouter()
 
-
+# TODO validar model ID existe, corriendo el metodo get_available_models() y lanzando error 400 si no se encuentra (yolo_core.py).
 @router.post("/detections", response_model=FrameCreateResponse, status_code=201)
 async def create_detection(
     file: UploadFile = File(...),
