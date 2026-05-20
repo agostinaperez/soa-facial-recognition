@@ -39,16 +39,24 @@ def upload_image(file_bytes: bytes, filename: str) -> str:
         data = assign.json()
         file_id: str = data["fid"]
         public_url: str = data.get("publicUrl", data.get("url", ""))
-        
+
+        #requiere implementacion de api en contenedor docker
         # Resolución dinámica del endpoint del servidor de volumen destino
-        endpoint = (
-            f"http://{public_url}/{file_id}"
-            if public_url
-            else f"{SEAWEED_VOLUME}/{file_id}"
-        )
+        #endpoint = (
+        #    f"http://{public_url}/{file_id}"
+        #    if public_url
+        #    else f"{SEAWEED_VOLUME}/{file_id}"
+        #)
         
+        #solucion temporal para continuar con desarrollo
+        endpoint = ( f"{SEAWEED_VOLUME}/{file_id}" )
+
         # Sube el archivo al servidor de volumen.
-        upload = client.post(endpoint, content=file_bytes)
+        upload = client.post(
+            endpoint,
+            files={"file": (filename, file_bytes)}
+        )
+
         upload.raise_for_status() # detiene si hay errores
     # Retorna el file_id (identificador único en SeaweedFS).
     return file_id

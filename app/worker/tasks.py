@@ -43,7 +43,7 @@ def run_inference(frame_id: str) -> dict:
         from app.models.entities import Frame
 
         # Buscar el fotograma en BD
-        frame = db.query(Frame).filter(Frame.id == frame_id).first()
+        frame = db.query(Frame).filter(Frame.frameId == frame_id).first()
         if not frame:
             return {"error": "Frame no encontrado"}
 
@@ -57,7 +57,7 @@ def run_inference(frame_id: str) -> dict:
         for det in detections:
             db.add(
                 Detection(
-                    frame_id=frame.id,
+                    frame_id=frame.frameId,
                     class_name=det["class_name"],
                     confidence=det["confidence"],
                     bounding_box=det["bounding_box"],

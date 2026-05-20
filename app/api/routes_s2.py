@@ -65,9 +65,9 @@ async def create_detection(
     
     # Se envía un mensaje (ticket) a Redis usando el método .delay().
     # El Worker de Celery tomará esta tarea en segundo plano usando únicamente el 'frame.id'.
-    run_inference.delay(frame.id)
+    run_inference.delay(frame.frameId)
 
     return {
-        "frame_id": frame.id,
-        "message": f"Imagen recibida, tu ID es {frame.id}",
+        "frame_id": frame.frameId,
+        "message": f"Imagen recibida, tu ID es {frame.frameId}",
     }
