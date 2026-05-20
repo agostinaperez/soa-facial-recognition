@@ -26,7 +26,6 @@ def predict(model_id: str, image_bytes: bytes) -> list[dict]:
 
     # devuelve una lista de detecciones, cada una con: class_name, confidence, bounding_box (x1, y1, x2, y2).    
     from ultralytics import YOLO
-    #esto es muy onda lo q hizo el profe en clase
     model = _load_model(model_id)
     img = Image.open(BytesIO(image_bytes))
     results = model(img)
