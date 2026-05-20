@@ -12,10 +12,10 @@ from app.models.entities import Frame
 from app.schemas.dtos import FrameCreateResponse
 from app.services.seaweed_ds import upload_image
 from app.worker.tasks import run_inference
+from app.services.yolo_core import get_available_models
 
 router = APIRouter()
 
-# TODO validar model ID existe, corriendo el metodo get_available_models() y lanzando error 400 si no se encuentra (yolo_core.py).
 @router.post("/detections", response_model=FrameCreateResponse, status_code=201)
 async def create_detection(
     file: UploadFile = File(...),
@@ -25,6 +25,16 @@ async def create_detection(
     extra_metadata: str = Form("{}"),
     db: Session = Depends(get_db),
 ) -> dict:
+    
+    # Verifica que el modelo exista
+    available_models = get_available_models()
+
+    if model_id not in available_models:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El modelo '{model_id}' no existe"
+        )
+
     
     # verifica que extra_metadata sea un JSON válido, si no lo es lanza un error 400    
     try:
@@ -45,7 +55,7 @@ async def create_detection(
         model_id=model_id,
         latitude=latitude,
         longitude=longitude,
-        extra_metadata=json.loads(metadata_dict),
+        extra_metadata=metadata_dict,
         image_url=seaweed_fid,
     )
     db.add(frame)
