@@ -4,7 +4,7 @@
 import asyncio
 import json
 
-from fastapi import APIRouter, Depends, File, Form, UploadFile
+from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database.session import get_db
@@ -12,9 +12,9 @@ from app.models.entities import Frame
 from app.schemas.dtos import FrameCreateResponse
 from app.services.seaweed_ds import upload_image
 from app.worker.tasks import run_inference
+from app.services.yolo_core import get_available_models
 
 router = APIRouter()
-
 
 @router.post("/detections", response_model=FrameCreateResponse, status_code=201)
 async def create_detection(
@@ -26,8 +26,26 @@ async def create_detection(
     db: Session = Depends(get_db),
 ) -> dict:
     
+    # Verifica que el modelo exista
+    available_models = get_available_models()
+
+    if model_id not in available_models:
+        raise HTTPException(
+            status_code=400,
+            detail=f"El modelo '{model_id}' no existe"
+        )
+
+    
+    # verifica que extra_metadata sea un JSON válido, si no lo es lanza un error 400    
+    try:
+        metadata_dict = json.loads(extra_metadata)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="El campo extra_metadata debe ser un JSON válido")
+    
     image_bytes = await file.read()
-    #esto ejecuta la funcion de forma asincrona el otro hilo, es to_thread(funcion, argumentos), devuelve la url de la imagen
+    
+    # Delegar la subida (E/S síncrona) a un hilo secundario para evitar 
+    # bloquear el Event Loop principal de FastAPI durante la transferencia.
     seaweed_fid = await asyncio.to_thread(
         upload_image, image_bytes, file.filename or "image.jpg"
     )
@@ -37,17 +55,19 @@ async def create_detection(
         model_id=model_id,
         latitude=latitude,
         longitude=longitude,
-        extra_metadata=json.loads(extra_metadata),
+        extra_metadata=metadata_dict,
         image_url=seaweed_fid,
     )
     db.add(frame)
     db.commit()
+    # Actualiza la instancia de frame con el ID generado por la BD tras el commit
     db.refresh(frame)
-
-    # Encolar tarea de inferencia en Celery
-    run_inference.delay(frame.id)
+    
+    # Se envía un mensaje (ticket) a Redis usando el método .delay().
+    # El Worker de Celery tomará esta tarea en segundo plano usando únicamente el 'frame.id'.
+    run_inference.delay(frame.frameId)
 
     return {
-        "frame_id": frame.id,
-        "message": "Imagen recibida, tu ID es X",
+        "frame_id": frame.frameId,
+        "message": f"Imagen recibida, tu ID es {frame.frameId}",
     }
