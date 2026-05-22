@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import JSON, Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
 
-from app.database.session import Base
+from database.session import Base
 
 #Tabla frames: Representa una imagen recibida por la API, almacena los metadatos.
 # id frame, modelo usado, coordenadas, metadatos extra (json libre), URL de imagen en seaweed, timestamp de creación.

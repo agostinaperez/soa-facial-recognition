@@ -7,12 +7,12 @@ import json
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
 from sqlalchemy.orm import Session
 
-from app.database.session import get_db
-from app.models.entities import Frame
-from app.schemas.dtos import FrameCreateResponse
-from app.services.seaweed_ds import upload_image
-from app.worker.tasks import run_inference
-from app.services.yolo_core import get_available_models
+from database.session import get_db
+from models.entities import Frame
+from schemas.dtos import FrameCreateResponse
+from services.seaweed_ds import upload_image
+from worker.tasks import run_inference
+from services.yolo_core import get_available_models
 
 router = APIRouter()
 
@@ -64,7 +64,7 @@ async def create_detection(
     db.refresh(frame)
     
     # Se envía un mensaje (ticket) a Redis usando el método .delay().
-    # El Worker de Celery tomará esta tarea en segundo plano usando únicamente el 'frame.id'.
+    # El Worker de Celery tomará esta tarea en segundo plano usando únicamente el 'frame.frameId'.
     run_inference.delay(frame.frameId)
 
     return {

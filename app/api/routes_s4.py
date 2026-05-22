@@ -13,9 +13,9 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
 
-from app.database.session import get_db
-from app.models.entities import Detection, Frame
-from app.schemas.dtos import FrameSearchResponse, DetectionResponse
+from database.session import get_db
+from models.entities import Detection, Frame
+from schemas.dtos import FrameSearchResponse, DetectionResponse
 
 router = APIRouter()
 
@@ -31,7 +31,7 @@ def search_frames(
     metadata_key: list[str] = Query(None),
     metadata_value: list[str] = Query(None),
     db: Session = Depends(get_db),
-) -> list[Frame]:
+) -> list[FrameSearchResponse]:
 
     if metadata_key and metadata_value and len(metadata_key) != len(metadata_value):
         raise HTTPException(
@@ -71,10 +71,9 @@ def search_frames(
     result = []
     for frame in frames:
         result.append(FrameSearchResponse(
-            frameId = frame.id,
-            imageURL=str(request.base_url) + f"api/v1/frames/{frame.id}",
-            metadata = frame.extra_metadata,
-            detections = [DetectionResponse.model_validate(d) for d in frame.detections]
+            frameId=frame.frameId,
+            imageURL=str(request.base_url) + f"api/v1/frames/{frame.frameId}",
+            metadata=frame.extra_metadata,
+            detections=[DetectionResponse.model_validate(d) for d in frame.detections],
         ))
     return result
-

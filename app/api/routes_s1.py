@@ -2,7 +2,7 @@
 # Servicio 1: GET /api/v1/models
 from fastapi import APIRouter
 
-from app.services.yolo_core import get_available_models
+from services.yolo_core import get_available_models
 
 router = APIRouter()
 

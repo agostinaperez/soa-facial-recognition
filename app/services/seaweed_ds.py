@@ -40,18 +40,14 @@ def upload_image(file_bytes: bytes, filename: str) -> str:
         file_id: str = data["fid"]
         public_url: str = data.get("publicUrl", data.get("url", ""))
 
-        #requiere implementacion de api en contenedor docker
-        # Resolución dinámica del endpoint del servidor de volumen destino
-        #endpoint = (
-        #    f"http://{public_url}/{file_id}"
-        #    if public_url
-        #    else f"{SEAWEED_VOLUME}/{file_id}"
-        #)
-        
-        #solucion temporal para continuar con desarrollo
-        endpoint = ( f"{SEAWEED_VOLUME}/{file_id}" )
+        # Resolución dinámica
+        endpoint = (
+            f"http://{public_url}/{file_id}"
+            if public_url
+            else f"{SEAWEED_VOLUME}/{file_id}"
+        )
 
-        # Sube el archivo al servidor de volumen.
+        # Sube el archivo al servidor de volumen asignado
         upload = client.post(
             endpoint,
             files={"file": (filename, file_bytes)}

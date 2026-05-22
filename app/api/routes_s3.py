@@ -10,21 +10,21 @@ from fastapi.responses import Response
 from PIL import Image
 from sqlalchemy.orm import Session
 
-from app.database.session import get_db
-from app.models.entities import Frame
-from app.services.seaweed_ds import get_image
+from database.session import get_db
+from models.entities import Frame
+from services.seaweed_ds import get_image
 
 router = APIRouter()
 
 
 @router.get("/frames/{frame_id}")
 async def get_frame_image(
-    frame_id: str,
+    frame_id: int,
     thumbnail: bool = Query(False),
     db: Session = Depends(get_db),
 ) -> Response:
     #busco si existe un frame con ese id, si no existe tiro un error 404
-    frame = db.query(Frame).filter(Frame.id == frame_id).first()
+    frame = db.query(Frame).filter(Frame.frameId == frame_id).first()
     if not frame:
         raise HTTPException(status_code=404, detail="Frame no encontrado")
 

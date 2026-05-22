@@ -12,6 +12,11 @@ services:
       - "3306:3306"
     volumes:
       - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
 #Redis + celery asincronismo entre la recepción de la imagen (API) y su procesamiento(YOLO), cosa de q el usuario no tenga q esperar
 #redis (Broker): lista de tareas.
@@ -45,6 +50,31 @@ services:
       - seaweed_master
     volumes:
       - seaweed_data:/data
+
+  api:
+    image: aggostinaperez/soa-api:1.4
+    container_name: soa_fastapi
+    ports:
+      - "8000:8000"
+    environment:
+      - SEAWEED_MASTER=http://seaweed_master:9333
+      - SEAWEED_VOLUME=http://seaweed_volume:8080 
+      - MYSQL_USER=${MYSQL_USER}
+      - MYSQL_PASSWORD=${MYSQL_PASSWORD}
+      - MYSQL_DATABASE=${MYSQL_DATABASE}
+      - MYSQL_HOST=db 
+      - CELERY_BROKER_URL=redis://redis:6379/0
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      seaweed_master:
+        condition: service_started
+      seaweed_volume:
+        condition: service_started
+    volumes:
+      - ./weights:/app/weights
 
 volumes:
   mysql_data:

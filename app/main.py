@@ -4,12 +4,12 @@
 
 from fastapi import FastAPI
 
-from app.api.routes_s1 import router as s1_router
-from app.api.routes_s2 import router as s2_router
-from app.api.routes_s3 import router as s3_router
-from app.api.routes_s4 import router as s4_router
-from app.api.routes_s5 import router as s5_router
-from app.database.session import Base, engine
+from api.routes_s1 import router as s1_router
+from api.routes_s2 import router as s2_router
+from api.routes_s3 import router as s3_router
+from api.routes_s4 import router as s4_router
+from api.routes_s5 import router as s5_router
+from database.session import Base, engine
 
 app = FastAPI(
     title="SOA Face Detection API",
@@ -31,3 +31,8 @@ def on_startup() -> None:
     
     # Crea las tablas en MySQL al iniciar la aplicación
     Base.metadata.create_all(bind=engine)
+    
+@app.get("/health", tags=["Monitoreo"])
+def health_check():
+    # Endpoint de uso interno para el Healthcheck
+    return {"status": "ok"}

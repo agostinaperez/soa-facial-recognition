@@ -4,25 +4,25 @@
 from datetime import datetime
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class DetectionResponse(BaseModel):
     
     # DTO para serializar una detección individual.
-    id: int
+    id: int = Field(validation_alias="detectionId")
     class_name: str
     confidence: float
     bounding_box: dict[str, Any]
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class FrameResponse(BaseModel):
 
     # DTO para serializar un fotograma completo con su lista de detecciones anidadas.
 
-    id: str
+    id: int = Field(validation_alias="frameId")
     model_id: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -31,7 +31,7 @@ class FrameResponse(BaseModel):
     created_at: datetime
     detections: list[DetectionResponse] = []
 
-    model_config = ConfigDict(from_attributes=True)
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class FrameCreateResponse(BaseModel):
@@ -57,11 +57,13 @@ class PersonResponse(BaseModel):
     extra: Optional[dict[str, Any]] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
 class FrameSearchResponse(BaseModel):
     # DTO para la respuesta del endpoint de búsqueda de fotogramas
     # que incluye la URL de la imagen y las detecciones anidadas.
-    
-    frameId: str
+
+    frameId: int
     imageURL: str
     metadata: Optional[dict[str, Any]] = None
     detections: list[DetectionResponse] = []

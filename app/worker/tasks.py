@@ -4,16 +4,15 @@ import os
 
 from celery import Celery
 
-from app.database.session import SessionLocal
-from app.models.entities import Detection
-from app.services.seaweed_ds import get_image
-from app.services.yolo_core import predict
+from database.session import SessionLocal
+from models.entities import Detection
+from services.seaweed_ds import get_image
+from services.yolo_core import predict
 
 # URL de Redis usada como broker y backend de resultados
-REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
-
+BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
 # Instancia de la aplicación Celery
-celery_app = Celery("soa_worker", broker=REDIS_URL, backend=REDIS_URL)
+celery_app = Celery("soa_worker", broker=BROKER_URL, backend=BROKER_URL)
 
 
 @celery_app.task
@@ -40,7 +39,7 @@ def run_inference(frame_id: str) -> dict:
 
     db = SessionLocal()
     try:
-        from app.models.entities import Frame
+        from models.entities import Frame
 
         # Buscar el fotograma en BD
         frame = db.query(Frame).filter(Frame.frameId == frame_id).first()
