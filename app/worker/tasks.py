@@ -1,18 +1,7 @@
-
-# Configuración de Celery y tareas asincrónicas.
-import os
-
-from celery import Celery
-
 from database.session import SessionLocal
-from models.entities import Detection
+from models.entities import Detection, Embedding, EmbeddingTask
 from services.seaweed_ds import get_image
-from services.yolo_core import predict
-
-# URL de Redis usada como broker y backend de resultados
-BROKER_URL = os.getenv("CELERY_BROKER_URL", "redis://localhost:6379/0")
-# Instancia de la aplicación Celery
-celery_app = Celery("soa_worker", broker=BROKER_URL, backend=BROKER_URL)
+from worker.celery_app import celery_app
 
 
 @celery_app.task
@@ -40,6 +29,7 @@ def run_inference(frame_id: str) -> dict:
     db = SessionLocal()
     try:
         from models.entities import Frame
+        from services.yolo_core import predict
 
         # Buscar el fotograma en BD
         frame = db.query(Frame).filter(Frame.frameId == frame_id).first()
@@ -66,6 +56,45 @@ def run_inference(frame_id: str) -> dict:
 
         return {"frame_id": frame_id, "detections_count": len(detections)}
 
+    except Exception as exc:
+        db.rollback()
+        raise exc
+    finally:
+        db.close()
+
+
+@celery_app.task
+def generate_embeddings_task(person_id: str, task_ids: list[str]) -> dict:
+    """Genera embeddings faciales para cada tarea encolada
+
+    Por cada taskId:
+    1. Busca el EmbeddingTask en DB.
+    2. Descarga la imagen desde SeaweedFS.
+    3. Genera el embedding con face_recognition.
+    4. Persiste el vector en la tabla embeddings.
+    5. Actualiza el estado a Completado / Fallido.
+    """
+    db = SessionLocal()
+    try:
+        from services.face_embedder import generate_face_embedding
+
+        for task_id in task_ids:
+            task = db.query(EmbeddingTask).filter(EmbeddingTask.taskId == task_id).first()
+            if not task:
+                continue
+            try:
+                #obtiene la imaagen y genera el embedding
+                image_bytes = get_image(task.seaweed_fid)
+                vector = generate_face_embedding(image_bytes)
+                if vector is None:
+                    task.status = "Fallido"
+                else:
+                    db.add(Embedding(personId=person_id, vector=vector))
+                    task.status = "Completado"
+            except Exception:
+                task.status = "Fallido"
+        db.commit()
+        return {"person_id": person_id, "tasks_processed": len(task_ids)}
     except Exception as exc:
         db.rollback()
         raise exc

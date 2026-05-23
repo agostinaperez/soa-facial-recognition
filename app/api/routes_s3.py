@@ -19,7 +19,7 @@ router = APIRouter()
 
 @router.get("/frames/{frame_id}")
 async def get_frame_image(
-    frame_id: int,
+    frame_id: str,
     thumbnail: bool = Query(False),
     db: Session = Depends(get_db),
 ) -> Response:

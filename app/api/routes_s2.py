@@ -11,8 +11,8 @@ from database.session import get_db
 from models.entities import Frame
 from schemas.dtos import FrameCreateResponse
 from services.seaweed_ds import upload_image
-from worker.tasks import run_inference
 from services.yolo_core import get_available_models
+from worker.celery_app import celery_app
 
 router = APIRouter()
 
@@ -62,10 +62,8 @@ async def create_detection(
     db.commit()
     # Actualiza la instancia de frame con el ID generado por la BD tras el commit
     db.refresh(frame)
-    
-    # Se envía un mensaje (ticket) a Redis usando el método .delay().
-    # El Worker de Celery tomará esta tarea en segundo plano usando únicamente el 'frame.frameId'.
-    run_inference.delay(frame.frameId)
+    # Se envía un ticket a Redis, el Worker de Celery va a tomar esta tarea en segundo plano usando únicamente el 'frame.frameId'.
+    celery_app.send_task("worker.tasks.run_inference", args=[frame.frameId])
 
     return {
         "frame_id": frame.frameId,

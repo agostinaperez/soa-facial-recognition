@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class DetectionResponse(BaseModel):
     
     # DTO para serializar una detección individual.
-    id: int = Field(validation_alias="detectionId")
+    id: str = Field(validation_alias="detectionId")
     class_name: str
     confidence: float
     bounding_box: dict[str, Any]
@@ -22,7 +22,7 @@ class FrameResponse(BaseModel):
 
     # DTO para serializar un fotograma completo con su lista de detecciones anidadas.
 
-    id: int = Field(validation_alias="frameId")
+    id: str = Field(validation_alias="frameId")
     model_id: str
     latitude: Optional[float] = None
     longitude: Optional[float] = None
@@ -38,7 +38,7 @@ class FrameCreateResponse(BaseModel):
     # DTO para la respuesta inmediata del POST /detections.
     # Se devuelve antes de que el worker termine la inferencia.
 
-    frame_id: int
+    frame_id: str
     message: str
 
 
@@ -50,7 +50,7 @@ class PersonCreate(BaseModel):
 
 
 class PersonResponse(BaseModel):
-    personId: int
+    personId: str
     nombre: str
     apellido: str
     email: str
@@ -63,8 +63,18 @@ class FrameSearchResponse(BaseModel):
     # DTO para la respuesta del endpoint de búsqueda de fotogramas
     # que incluye la URL de la imagen y las detecciones anidadas.
 
-    frameId: int
+    frameId: str
     imageURL: str
     metadata: Optional[dict[str, Any]] = None
     detections: list[DetectionResponse] = []
     model_config = ConfigDict(from_attributes=False)
+
+
+class EmbeddingRequest(BaseModel):
+    images: list[str]
+
+
+class EmbeddingAcceptedResponse(BaseModel):
+    task_id: str
+    message: str
+    total_images: int
