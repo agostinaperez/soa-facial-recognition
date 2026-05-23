@@ -1,0 +1,21 @@
+#docker build -f app/Dockerfile.worker -t aggostinaperez/soa-worker:1.0 ./app
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# El worker sí necesita las librerías nativas que OpenCV/Ultralytics cargan al importar cv2.
+RUN apt-get update && apt-get install -y \
+    libgl1 \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender1 \
+    libxcb1 \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements.base.txt requirements.worker.txt requirements.txt ./
+RUN pip install --upgrade pip
+RUN pip install --default-timeout=100 --no-cache-dir -r requirements.worker.txt
+COPY . .
+
+CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=info"]
