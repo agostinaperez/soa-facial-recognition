@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 
 from database.session import get_db
 from models.entities import EmbeddingTask, Person
-from schemas.dtos import EmbeddingAcceptedResponse, EmbeddingRequest, PersonCreate, PersonResponse
+from schemas.dtos import EmbeddingAcceptedResponse, EmbeddingRequest, FaceRecognitionRequest, FaceRecognitionResponse, PersonCreate, PersonResponse
 from services.seaweed_ds import upload_image
 from worker.celery_app import celery_app
 
@@ -85,3 +85,16 @@ def create_embeddings(personId: str, body: EmbeddingRequest, db: Session = Depen
         "message": f"Procesamiento de embeddings iniciado para {len(task_ids)} imagen(es)",
         "total_images": len(task_ids),
     }
+
+
+@router.post("/face-recognition", response_model=FaceRecognitionResponse)
+def face_recognition_endpoint(body: FaceRecognitionRequest) -> FaceRecognitionResponse:
+    # Delega el procesamiento al worker 
+    # y espera el resultado de forma sincrónica
+    task = celery_app.send_task("worker.tasks.face_recognition_task", args=[body.image, body.threshold])
+    result = task.get(timeout=30)
+
+    if "error" in result:
+        raise HTTPException(status_code=422, detail=result["detail"])
+
+    return FaceRecognitionResponse(**result)

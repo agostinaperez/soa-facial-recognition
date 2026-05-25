@@ -78,3 +78,15 @@ class EmbeddingAcceptedResponse(BaseModel):
     task_id: str
     message: str
     total_images: int
+
+
+class FaceRecognitionRequest(BaseModel):
+    image: str
+    threshold: float = 0.8
+
+
+class FaceRecognitionResponse(BaseModel):
+    personId: Optional[str] = None
+    nombre: Optional[str] = None
+    apellido: Optional[str] = None
+    confidence: float

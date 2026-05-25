@@ -1,5 +1,11 @@
+import base64
+
+import face_recognition as fr
+import numpy as np
+
 from database.session import SessionLocal
-from models.entities import Detection, Embedding, EmbeddingTask
+from models.entities import Detection, Embedding, EmbeddingTask, Person
+from services.face_embedder import generate_face_embedding
 from services.seaweed_ds import get_image
 from worker.celery_app import celery_app
 
@@ -76,14 +82,11 @@ def generate_embeddings_task(person_id: str, task_ids: list[str]) -> dict:
     """
     db = SessionLocal()
     try:
-        from services.face_embedder import generate_face_embedding
-
         for task_id in task_ids:
             task = db.query(EmbeddingTask).filter(EmbeddingTask.taskId == task_id).first()
             if not task:
                 continue
             try:
-                #obtiene la imaagen y genera el embedding
                 image_bytes = get_image(task.seaweed_fid)
                 vector = generate_face_embedding(image_bytes)
                 if vector is None:
@@ -98,5 +101,47 @@ def generate_embeddings_task(person_id: str, task_ids: list[str]) -> dict:
     except Exception as exc:
         db.rollback()
         raise exc
+    finally:
+        db.close()
+
+
+@celery_app.task(name="worker.tasks.face_recognition_task")
+def face_recognition_task(image_b64: str, threshold: float) -> dict:
+    """Reconoce una persona a partir de una imagen comparando contra embeddings almacenados.
+
+    1. Decodifica la imagen y genera su embedding facial.
+    2. Carga todos los embeddings de la BD.
+    3. Calcula distancias euclídeas y selecciona el mejor candidato.
+    4. Retorna la persona si confidence >= threshold, o resultado negativo si no.
+    """
+    image_bytes = base64.b64decode(image_b64)
+    query_vector = generate_face_embedding(image_bytes)
+
+    if query_vector is None:
+        return {"error": "no_face", "detail": "No se detectó ningún rostro en la imagen"}
+
+    db = SessionLocal()
+    try:
+        stored_embeddings = db.query(Embedding).all()
+        if not stored_embeddings:
+            return {"personId": None, "confidence": 0.0}
+
+        known_encodings = [np.array(emb.vector) for emb in stored_embeddings]
+        query_encoding = np.array(query_vector)
+        distances = fr.face_distance(known_encodings, query_encoding)
+
+        best_idx = int(np.argmin(distances))
+        confidence = max(0.0, 1.0 - float(distances[best_idx]))
+
+        if confidence >= threshold:
+            person = db.query(Person).filter(Person.personId == stored_embeddings[best_idx].personId).first()
+            return {
+                "personId": person.personId,
+                "nombre": person.nombre,
+                "apellido": person.apellido,
+                "confidence": round(confidence, 4),
+            }
+
+        return {"personId": None, "confidence": round(confidence, 4)}
     finally:
         db.close()
