@@ -52,7 +52,7 @@ services:
       - seaweed_data:/data
 
   api:
-    image: aggostinaperez/soa-api:4.0
+    image: aggostinaperez/soa-api:4.1
     container_name: soa_fastapi
     ports:
       - "8000:8000"
