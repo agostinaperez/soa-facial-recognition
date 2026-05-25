@@ -74,9 +74,9 @@ def create_embeddings(personId: str, body: EmbeddingRequest, db: Session = Depen
     # - personId: la persona para la que se generan embeddings
     # - task_ids: todas las tareas creadas recién en la BD
     # El worker "worker.tasks.generate_embeddings_task" corre en segundo plano.
-    celery_app.send_task("worker.tasks.generate_embeddings_task", args=[personId, task_ids])
-
     db.commit()
+
+    celery_app.send_task("worker.tasks.generate_embeddings_task", args=[personId, task_ids])
 
     # Devuelve 202 Accepted para indicar que el trabajo fue aceptado y quedó encolado.
     return {

@@ -1,0 +1,25 @@
+meta {
+  name: Buscar con filtros completos
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{base_url}}/frames/search?detected_class=person&metadata_key=camara&metadata_value=frontal&metadata_key=lugar&metadata_value=casa&min_lat=40.0&max_lat=41.0
+  body: none
+  auth: inherit
+}
+
+params:query {
+  detected_class: person
+  metadata_key: camara
+  metadata_value: frontal
+  metadata_key: lugar
+  metadata_value: casa
+  min_lat: 40.0
+  max_lat: 41.0
+}
+
+settings {
+  encodeUrl: true
+}

@@ -1,0 +1,28 @@
+meta {
+  name: Crear persona
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/persons
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+      "nombre": "Leandro",
+      "apellido": "Biondi",
+      "email": "leandrobiondi12@gmail.com",
+      "extra": {
+      "dni": "43793733",
+      "area": "sistemas"
+      }
+  } 
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

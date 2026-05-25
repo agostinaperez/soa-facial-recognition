@@ -1,0 +1,24 @@
+meta {
+  name: Subir imagen
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/detections
+  body: multipartForm
+  auth: inherit
+}
+
+body:multipart-form {
+  file: @file(/home/fabri/Escritorio/imagenes/fabri/jpg/IMG_20260417_172052.jpg)
+  model_id: yolov8n.pt
+  latitude: -31.411986597576682
+  longitude: -64.20075777507294
+  extra_metadata: {"camara": "frontal", "lugar" : "casa"}
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

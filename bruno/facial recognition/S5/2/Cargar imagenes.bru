@@ -1,0 +1,24 @@
+meta {
+  name: Cargar imagenes
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/persons/{{person_id}}/embeddings
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "images": [
+      
+    ]
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

@@ -90,3 +90,24 @@ celery -A app.worker.tasks worker --loglevel=info  # Worker
 docker compose up -d                         # Infraestructura
 docker compose down                          # Parar infra
 ```
+
+## Testing con Bruno
+
+[Bruno](https://www.usebruno.com) es un cliente API open-source que guarda las colecciones como archivos de texto directamente en el repo (sin cuenta en la nube).
+
+### Instalación
+
+```bash
+# Opción A — App de escritorio (recomendado)
+# Descargar desde: https://www.usebruno.com/downloads
+
+# Opción B — CLI
+npm install -g @usebruno/cli
+```
+
+### Abrir la colección
+
+1. Abrir Bruno desktop
+2. **File > Open Collection**
+3. Seleccionar la carpeta `./bruno/` del repo
+4. En el selector de entorno (arriba a la derecha) elegir **local**

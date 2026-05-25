@@ -1,0 +1,22 @@
+meta {
+  name: Buscar por metadata
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{base_url}}/frames/search?metadata_key=camara&metadata_value=frontal&metadata_key=lugar&metadata_value=casa
+  body: none
+  auth: inherit
+}
+
+params:query {
+  metadata_key: camara
+  metadata_value: frontal
+  metadata_key: lugar
+  metadata_value: casa
+}
+
+settings {
+  encodeUrl: true
+}

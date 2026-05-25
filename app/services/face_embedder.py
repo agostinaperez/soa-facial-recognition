@@ -21,6 +21,8 @@ def generate_face_embedding(image_bytes: bytes) -> list[float] | None:
     # Detecta la primer cara en la imagen y devuelve su embedding de 128 floats
     # el codigo se sacó del código del profe
     np_arr = np.frombuffer(image_bytes, np.uint8)
+    if np_arr.size == 0:
+        return None
     image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
     if image is None:
         return None

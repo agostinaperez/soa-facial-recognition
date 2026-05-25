@@ -1,0 +1,10 @@
+
+S5-2
+curl -X POST http://localhost:8000/api/v1/persons/PERSONID/embeddings \
+    -H "Content-Type: application/json" \
+    -d @ARCHIVO_IMAGENES_B64
+
+S5-3
+curl -X POST hcurl -X POST http://localhost:8000/api/v1/face-recognition \
+    -H "Content-Type: application/json" \
+    -d @ARCHIVO_IMAGEN_B64

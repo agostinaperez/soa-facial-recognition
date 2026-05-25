@@ -1,0 +1,15 @@
+meta {
+  name: Obtener persona
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/persons/{{person_id}}
+  body: none
+  auth: inherit
+}
+
+settings {
+  encodeUrl: true
+}

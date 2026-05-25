@@ -1,0 +1,20 @@
+meta {
+  name: Ver thumbnail
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{base_url}}/frames/853362da-3c41-47c4-9c2f-6a5909996143?thumbnail=true
+  body: none
+  auth: inherit
+}
+
+params:query {
+  thumbnail: true
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}

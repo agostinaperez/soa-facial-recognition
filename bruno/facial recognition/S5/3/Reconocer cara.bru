@@ -1,0 +1,23 @@
+meta {
+  name: Reconocer cara
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{base_url}}/face-recognition
+  body: json
+  auth: inherit
+}
+
+body:json {
+  {
+    "image": "",
+    "threshold": 0.6
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
