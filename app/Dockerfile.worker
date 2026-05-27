@@ -17,7 +17,17 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.base.txt requirements.worker.txt requirements.txt ./
 RUN pip install --upgrade pip
-RUN pip install --default-timeout=100 --no-cache-dir -r requirements.worker.txt
+
+# USE_GPU=true instala faiss-gpu (requiere CUDA en el host).
+# Por defecto instala faiss-cpu para máquinas sin GPU NVIDIA.
+ARG USE_GPU=false
+RUN pip install --default-timeout=100 --no-cache-dir -r requirements.worker.txt && \
+    if [ "$USE_GPU" = "true" ]; then \
+        pip install --no-cache-dir faiss-gpu; \
+    else \
+        pip install --no-cache-dir faiss-cpu; \
+    fi
+
 COPY . .
 
 CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=info"]

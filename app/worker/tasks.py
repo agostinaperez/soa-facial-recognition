@@ -6,6 +6,7 @@ import numpy as np
 from database.session import SessionLocal
 from models.entities import Detection, Embedding, EmbeddingTask, Person
 from services.face_embedder import generate_face_embedding
+from services.faiss_index import build_index, search as faiss_search
 from services.seaweed_ds import get_image
 from worker.celery_app import celery_app
 
@@ -126,15 +127,27 @@ def face_recognition_task(image_b64: str, threshold: float) -> dict:
         if not stored_embeddings:
             return {"personId": None, "confidence": 0.0}
 
-        known_encodings = [np.array(emb.vector) for emb in stored_embeddings]
-        query_encoding = np.array(query_vector)
-        distances = fr.face_distance(known_encodings, query_encoding)
+        # Separamos vectores y personIds en listas paralelas.
+        # La posición i en vectors corresponde al personId en la posición i de person_ids_list.
+        vectors = [emb.vector for emb in stored_embeddings]
+        person_ids_list = [emb.personId for emb in stored_embeddings]
 
-        best_idx = int(np.argmin(distances))
-        confidence = max(0.0, 1.0 - float(distances[best_idx]))
+        # Construimos el índice FAISS en memoria con todos los embeddings de la BD.
+        # El índice se reconstruye en cada llamada para garantizar consistencia con MySQL.
+        index, pid_list = build_index(vectors, person_ids_list)
+
+        # Buscamos el vecino más cercano al query_vector dentro del índice FAISS.
+        results = faiss_search(index, pid_list, query_vector, k=1)
+
+        best_person_id, l2_sq_dist = results[0]
+
+        # IndexFlatL2 devuelve distancia L2 al cuadrado (no la euclídea directa).
+        # Aplicamos sqrt para obtener la distancia euclídea equivalente a face_distance(),
+        # y luego calculamos confidence como 1 - distancia (igual que antes).
+        confidence = max(0.0, 1.0 - float(np.sqrt(l2_sq_dist)))
 
         if confidence >= threshold:
-            person = db.query(Person).filter(Person.personId == stored_embeddings[best_idx].personId).first()
+            person = db.query(Person).filter(Person.personId == best_person_id).first()
             return {
                 "personId": person.personId,
                 "nombre": person.nombre,
