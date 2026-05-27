@@ -11,7 +11,7 @@ from database.session import get_db
 from models.entities import Frame
 from schemas.dtos import FrameCreateResponse
 from services.seaweed_ds import upload_image
-from services.yolo_core import get_available_models
+from services.yolo_core import get_available_models, predict
 from worker.celery_app import celery_app
 
 router = APIRouter()
@@ -44,6 +44,16 @@ async def create_detection(
     
     image_bytes = await file.read()
     
+    # Ejecutar inferencia previa para validar detecciones
+    detections = predict(model_id, image_bytes)
+
+    # Si no hay detecciones válidas, rechazar imagen
+    if len(detections) == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="No se detectaron objetos con confianza suficiente"
+        )
+
     # Delegar la subida (E/S síncrona) a un hilo secundario para evitar 
     # bloquear el Event Loop principal de FastAPI durante la transferencia.
     seaweed_fid = await asyncio.to_thread(

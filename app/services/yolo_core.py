@@ -9,6 +9,8 @@ from PIL import Image
 
 WEIGHTS_DIR = os.getenv("YOLO_WEIGHTS_DIR", "./weights")
 
+# Umbral mínimo de confianza
+MIN_CONFIDENCE = 0.70
 
 def get_available_models() -> list[str]:
     # Escanea el directorio de pesos (./weights/ por defecto) y devuelve una lista con los nombres de archivos .pt encontrados.
@@ -32,10 +34,17 @@ def predict(model_id: str, image_bytes: bytes) -> list[dict]:
     detections: list[dict] = []
     for r in results:
         for box in r.boxes:
+
+            confidence = float(box.conf[0])
+
+            # Ignorar detecciones con baja confianza
+            if confidence < MIN_CONFIDENCE:
+                continue
+
             detections.append(
                 {
                     "class_name": model.names[int(box.cls[0])],
-                    "confidence": float(box.conf[0]),
+                    "confidence": confidence,
                     "bounding_box": {
                         "x1": float(box.xyxy[0][0]),
                         "y1": float(box.xyxy[0][1]),
