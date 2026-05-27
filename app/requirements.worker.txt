@@ -3,5 +3,5 @@
 ultralytics==8.3.40
 face-recognition>=1.3.0
 opencv-python>=4.9.0
-numpy>=1.26.0
+numpy>=1.26.0,<2.0
 # faiss se instala condicionalmente en el Dockerfile según USE_GPU (faiss-cpu o faiss-gpu)

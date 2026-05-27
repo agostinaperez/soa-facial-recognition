@@ -7,13 +7,12 @@ from pathlib import Path
 
 from PIL import Image
 
-import torch
-
 WEIGHTS_DIR = os.getenv("YOLO_WEIGHTS_DIR", "./weights")
 
-# Usa GPU si está disponible, sino CPU. Ultralytics lo detecta automáticamente
-# pero lo hacemos explícito para que sea predecible en todos los entornos.
-_DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+
+def _get_device() -> str:
+    import torch
+    return "cuda" if torch.cuda.is_available() else "cpu"
 
 
 def get_available_models() -> list[str]:
@@ -34,7 +33,7 @@ def predict(model_id: str, image_bytes: bytes) -> list[dict]:
     from ultralytics import YOLO
     model = _load_model(model_id)
     img = Image.open(BytesIO(image_bytes))
-    results = model(img, device=_DEVICE)
+    results = model(img, device=_get_device())
     detections: list[dict] = []
     for r in results:
         for box in r.boxes:

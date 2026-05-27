@@ -30,4 +30,4 @@ RUN pip install --default-timeout=100 --no-cache-dir -r requirements.worker.txt 
 
 COPY . .
 
-CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=info"]
+CMD ["celery", "-A", "worker.tasks", "worker", "--loglevel=info", "--pool=solo"]
