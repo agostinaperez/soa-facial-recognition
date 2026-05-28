@@ -1,12 +1,7 @@
 import faiss
 import numpy as np
-import torch
 
-# face_recognition siempre genera vectores de exactamente 128 números flotantes
 DIMENSION = 128
-
-# True si hay GPU NVIDIA disponible Y faiss-gpu está instalado
-_USE_GPU = torch.cuda.is_available() and faiss.get_num_gpus() > 0
 
 
 def build_index(vectors: list, person_ids: list):
@@ -14,8 +9,6 @@ def build_index(vectors: list, person_ids: list):
 
     IndexFlatL2 realiza búsqueda exacta por distancia euclídea al cuadrado (L2²).
     No es aproximado: siempre encuentra el vecino real más cercano.
-    Si hay GPU NVIDIA disponible y faiss-gpu está instalado, mueve el índice a GPU
-    automáticamente. En caso contrario usa CPU sin cambios.
 
     Args:
         vectors: lista de embeddings (cada uno es una lista de 128 floats).
@@ -35,11 +28,7 @@ def build_index(vectors: list, person_ids: list):
     # Retornamos el índice Y la lista de personIds porque FAISS internamente
     # trabaja con enteros (posición 0, 1, 2...), no con UUIDs.
     # person_ids[i] nos dice a qué persona pertenece el vector en la posición i del índice.
-    if _USE_GPU:
-        res = faiss.StandardGpuResources()
-        index = faiss.index_cpu_to_gpu(res, 0, index_cpu)  # mueve el índice a GPU 0
-    else:
-        index = index_cpu
+    index = index_cpu
 
     return index, list(person_ids)
 
@@ -48,7 +37,7 @@ def search(index, person_ids: list, query_vector: list, k: int = 1):
     """Busca los k vecinos más cercanos al query_vector dentro del índice.
 
     Args:
-        index: índice FAISS construido con build_index (CPU o GPU).
+        index: índice FAISS construido con build_index.
         person_ids: lista de UUIDs paralela al índice (retornada por build_index).
         query_vector: embedding de la imagen consulta (128 floats).
         k: cantidad de vecinos a retornar (por defecto 1).

@@ -82,18 +82,7 @@ services:
     build:
       context: ./app
       dockerfile: Dockerfile.worker
-      args:
-        # Para build con GPU: USE_GPU=true docker compose up --build
-        USE_GPU: ${USE_GPU:-false}
     container_name: soa_worker
-    deploy:
-      resources:
-        reservations:
-          devices:
-            # Se ignora automáticamente si no hay GPU NVIDIA ni nvidia-container-toolkit instalado
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
       - SEAWEED_VOLUME=http://seaweed_volume:8080
