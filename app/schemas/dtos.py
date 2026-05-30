@@ -14,6 +14,7 @@ class DetectionResponse(BaseModel):
     class_name: str
     confidence: float
     bounding_box: dict[str, Any]
+    enriched_data: Optional[dict[str, Any]] = None
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

@@ -52,7 +52,7 @@ services:
       - seaweed_data:/data
 
   api:
-    image: antobadami845/soa-api:6.0
+    image: aggostinaperez/soa-api:7.2
     container_name: soa_fastapi
     ports:
       - "8000:8000"
@@ -79,7 +79,7 @@ services:
   # Worker Celery separado: concentra YOLO/OpenCV y sus dependencias nativas
   # Esto evita inflar la imagen HTTP con librerías pesadas que solo sirven para inferencia
   worker:
-    image: aggostinaperez/soa-worker:3.0
+    image: aggostinaperez/soa-worker:4.3
     container_name: soa_worker
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
@@ -89,6 +89,8 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_HOST=db
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - AZURE_FACE_ENDPOINT=${AZURE_FACE_ENDPOINT}
+      - AZURE_FACE_KEY=${AZURE_FACE_KEY}
     depends_on:
       db:
         condition: service_healthy
