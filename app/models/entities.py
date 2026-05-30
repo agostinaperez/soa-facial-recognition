@@ -47,6 +47,8 @@ class Detection(Base):
     class_name = Column(String(255), nullable=False)
     confidence = Column(Float, nullable=False)
     bounding_box = Column(JSON, nullable=False)
+    #datos extra de la integracion con Azure Face API, como faceId, edad, genero, etc
+    enriched_data = Column(JSON, nullable=True)
     #relacion manyToOne con frame, back_populates para acceso bidireccional
     frame = relationship("Frame", back_populates="detections")
 

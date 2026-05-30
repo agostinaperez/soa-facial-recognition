@@ -1,7 +1,10 @@
 import base64
+import logging
 
 import face_recognition as fr
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 from database.session import SessionLocal
 from models.entities import Detection, Embedding, EmbeddingTask, Person
@@ -47,17 +50,27 @@ def run_inference(frame_id: str) -> dict:
 
         # Ejecutar inferencia YOLO
         detections = predict(frame.model_id, image_bytes)
+        if not detections:
+            logger.warning("Frame %s: no se detectaron objetos con el umbral de confianza configurado", frame_id)
 
-        # Persistir cada detección en BD
+        from services.cloud_detection import crop_face, enrich_face
+
+        # Persistir cada detección en BD con enriquecimiento opcional
         for det in detections:
-            db.add(
-                Detection(
-                    frame_id=frame.frameId,
-                    class_name=det["class_name"],
-                    confidence=det["confidence"],
-                    bounding_box=det["bounding_box"],
-                )
+            detection = Detection(
+                frame_id=frame.frameId,
+                class_name=det["class_name"],
+                confidence=det["confidence"],
+                bounding_box=det["bounding_box"],
             )
+            #si la deteccion es una persona, recortar la cara y enviar a Azure Face API para enriquecimiento de datos (edad, genero, etc)
+            if det["class_name"] == "person":
+                face_bytes = crop_face(image_bytes, det["bounding_box"])
+                if face_bytes:
+                    enriched = enrich_face(face_bytes)
+                    if enriched:
+                        detection.enriched_data = enriched
+            db.add(detection)
         db.commit()
 
         return {"frame_id": frame_id, "detections_count": len(detections)}
