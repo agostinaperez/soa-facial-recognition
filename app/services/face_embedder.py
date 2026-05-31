@@ -24,14 +24,35 @@ def generate_face_embedding(image_bytes: bytes) -> list[float] | None:
     if np_arr.size == 0:
         return None
     image = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
     if image is None:
         return None
+    
+    height, width = image.shape[:2]
+
+    MIN_WIDTH = 200
+    MIN_HEIGHT = 200
+
+    if width < MIN_WIDTH or height < MIN_HEIGHT:
+        raise ValueError(
+            f"Resolución insuficiente ({width}x{height})"
+        )
 
     face_locs = face_recognition.face_locations(image)
-    if not face_locs:
+
+    # No hay caras
+    if len(face_locs) == 0:
         return None
 
-    fr = face_recognition.face_encodings(image, known_face_locations=[face_locs[0]])
+    # Hay más de una cara
+    if len(face_locs) > 1:
+        raise ValueError("La imagen debe contener un único rostro")
+
+    fr = face_recognition.face_encodings(
+        image,
+        known_face_locations=face_locs
+    )
+
     if not fr:
         return None
 
