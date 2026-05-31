@@ -128,7 +128,14 @@ def face_recognition_task(image_b64: str, threshold: float) -> dict:
     4. Retorna la persona si confidence >= threshold, o resultado negativo si no.
     """
     image_bytes = base64.b64decode(image_b64)
-    query_vector = generate_face_embedding(image_bytes)
+    
+    try:
+        query_vector = generate_face_embedding(image_bytes)
+    except ValueError as e:
+        return {
+            "error": "invalid_image",
+            "detail": str(e)
+        }
 
     if query_vector is None:
         return {"error": "no_face", "detail": "No se detectó ningún rostro en la imagen"}

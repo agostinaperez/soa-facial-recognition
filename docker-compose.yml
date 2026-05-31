@@ -79,7 +79,7 @@ services:
   # Worker Celery separado: concentra YOLO/OpenCV y sus dependencias nativas
   # Esto evita inflar la imagen HTTP con librerías pesadas que solo sirven para inferencia
   worker:
-    image: aggostinaperez/soa-worker:4.3
+    image: antobadami845/soa-worker:4.4
     container_name: soa_worker
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
