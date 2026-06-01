@@ -50,9 +50,7 @@ services:
       - seaweed_data:/data
 
   api:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.api
+    image: aggostinaperez/soa-api:4.1
     container_name: soa_fastapi
     ports:
       - "8000:8000"
@@ -79,9 +77,7 @@ services:
   # Worker Celery separado: concentra YOLO/OpenCV y sus dependencias nativas
   # Esto evita inflar la imagen HTTP con librerías pesadas que solo sirven para inferencia
   worker:
-    build:
-      context: ./app
-      dockerfile: Dockerfile.worker
+    image: aggostinaperez/soa-worker:3.0
     container_name: soa_worker
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
