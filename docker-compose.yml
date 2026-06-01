@@ -39,11 +39,7 @@ services:
   # SeaweedFS Volume (Donde realmente se guardan los archivos)
   seaweed_volume:
     image: chrislusf/seaweedfs
-    container_name: soa_seaweed_volume
-    ports:
-      - "8080:8080"
-      - "18080:18080"
-    command: "volume -mserver=seaweed_master:9333 -port=8080 -ip=seaweed_volume"
+    command: "volume -mserver=seaweed_master:9333 -port=8080 -ip.bind=0.0.0.0"
     depends_on:
       - seaweed_master
     volumes:
@@ -56,7 +52,6 @@ services:
       - "8000:8000"
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
-      - SEAWEED_VOLUME=http://seaweed_volume:8080 
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -81,7 +76,6 @@ services:
     container_name: soa_worker
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
-      - SEAWEED_VOLUME=http://seaweed_volume:8080
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
