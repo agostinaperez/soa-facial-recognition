@@ -12,6 +12,11 @@ WEIGHTS_DIR = os.getenv("YOLO_WEIGHTS_DIR", "./weights")
 # Umbral mínimo de confianza
 MIN_CONFIDENCE = 0.70
 
+def _get_device() -> str:
+    import torch
+    return "cuda" if torch.cuda.is_available() else "cpu"
+
+
 def get_available_models() -> list[str]:
     # Escanea el directorio de pesos (./weights/ por defecto) y devuelve una lista con los nombres de archivos .pt encontrados.
     p = Path(WEIGHTS_DIR)
@@ -30,7 +35,7 @@ def predict(model_id: str, image_bytes: bytes) -> list[dict]:
     from ultralytics import YOLO
     model = _load_model(model_id)
     img = Image.open(BytesIO(image_bytes))
-    results = model(img)
+    results = model(img, device=_get_device())
     detections: list[dict] = []
     for r in results:
         for box in r.boxes:
