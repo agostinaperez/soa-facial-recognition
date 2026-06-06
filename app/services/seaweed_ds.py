@@ -55,7 +55,7 @@ def upload_image(file_bytes: bytes, filename: str) -> str:
 def get_image(file_id: str) -> bytes:
 
     # Descarga una imagen desde SeaweedFS por su file_id.
-    with httpx.Client(timeout=_TIMEOUT) as client:
+    with httpx.Client(timeout=_TIMEOUT,follow_redirects=True) as client:
         # El Master actúa de proxy: GET http://seaweed_master:9333/<file_id>
         resp = client.get(f"{SEAWEED_MASTER}/{file_id}")
         resp.raise_for_status()
