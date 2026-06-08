@@ -100,6 +100,11 @@ def generate_embeddings_task(person_id: str, task_ids: list[str]) -> dict:
             task = db.query(EmbeddingTask).filter(EmbeddingTask.taskId == task_id).first()
             if not task:
                 continue
+            # Si el worker se detuvo durante el bucle en una ejecución previa,
+            # algunas subtareas ya quedaron guardadas en MySQL como "Completado".
+            # Al reiniciar la tarea completa de Celery, saltamos lo que ya se procesó con éxito.
+            if task.status == "Completado":
+                continue
             try:
                 image_bytes = get_image(task.seaweed_fid)
                 vector = generate_face_embedding(image_bytes)

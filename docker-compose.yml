@@ -85,6 +85,12 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - AZURE_FACE_ENDPOINT=${AZURE_FACE_ENDPOINT}
       - AZURE_FACE_KEY=${AZURE_FACE_KEY}
+       # Enviar confirmación (ACK) SOLO cuando la función finalice con éxito
+      - CELERY_TASK_ACKS_LATE=True
+      # Procesar estrictamente de a 1 tarea a la vez (evita inflar RAM con YOLO)
+      - CELERY_WORKER_PREFETCH_MULTIPLIER=1
+      # Si el contenedor muere a mitad de ejecución, rechazar la tarea para que vuelva a Redis
+      - CELERY_TASK_REJECT_ON_WORKER_LOST=True
     depends_on:
       db:
         condition: service_healthy
