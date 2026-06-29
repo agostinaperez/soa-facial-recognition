@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from database.session import get_db
 from models.entities import EmbeddingTask, Person
 from schemas.dtos import EmbeddingAcceptedResponse, EmbeddingRequest, FaceRecognitionRequest, FaceRecognitionResponse, PersonCreate, PersonResponse
+from security import require_roles
 from services.seaweed_ds import upload_image
 from worker.celery_app import celery_app
 
@@ -21,7 +22,11 @@ router = APIRouter()
 
 
 @router.post("/persons", response_model=PersonResponse, status_code=201)
-def create_person(body: PersonCreate, db: Session = Depends(get_db)) -> Person:
+def create_person(
+    body: PersonCreate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator"])),
+) -> Person:
     person = Person(
         nombre=body.nombre,
         apellido=body.apellido,
@@ -35,7 +40,11 @@ def create_person(body: PersonCreate, db: Session = Depends(get_db)) -> Person:
 
 
 @router.get("/persons/{personId}", response_model=PersonResponse)
-def get_person(personId: str, db: Session = Depends(get_db)) -> Person:
+def get_person(
+    personId: str,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator", "viewer"])),
+) -> Person:
     person = db.query(Person).filter(Person.personId == personId).first()
     if not person:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -43,7 +52,12 @@ def get_person(personId: str, db: Session = Depends(get_db)) -> Person:
 
 
 @router.post("/persons/{personId}/embeddings", response_model=EmbeddingAcceptedResponse, status_code=202)
-def create_embeddings(personId: str, body: EmbeddingRequest, db: Session = Depends(get_db)) -> dict:
+def create_embeddings(
+    personId: str,
+    body: EmbeddingRequest,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator"])),
+) -> dict:
     person = db.query(Person).filter(Person.personId == personId).first()
     if not person:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
@@ -88,9 +102,10 @@ def create_embeddings(personId: str, body: EmbeddingRequest, db: Session = Depen
 
 
 @router.post("/face-recognition", response_model=FaceRecognitionResponse)
-def face_recognition_endpoint(body: FaceRecognitionRequest) -> FaceRecognitionResponse:
-    # Delega el procesamiento al worker 
-    # y espera el resultado de forma sincrónica
+def face_recognition_endpoint(
+    body: FaceRecognitionRequest,
+    _: dict = Depends(require_roles(["admin", "operator"])),
+) -> FaceRecognitionResponse:
     task = celery_app.send_task("worker.tasks.face_recognition_task", args=[body.image, body.threshold])
     result = task.get(timeout=30)
 

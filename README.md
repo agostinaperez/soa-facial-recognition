@@ -10,6 +10,7 @@ Sistema de análisis de fotogramas e inferencia con YOLO, expuesto mediante APIs
 - Ultralytics (YOLOv8) — inferencia de detección facial
 - SeaweedFS — almacenamiento de objetos distribuido
 - Docker Compose — infraestructura (MySQL, Redis, SeaweedFS)
+- Keycloak para protección de endpoints
 
 ## Arquitectura
 
@@ -36,7 +37,6 @@ Celery Worker (segundo plano)
 ## Setup rápido
 
 ```bash
-# 1. Variables de entorno
 cp .env.example .env
 
 # 2. Infraestructura (MySQL, Redis, SeaweedFS)
@@ -56,31 +56,23 @@ uvicorn app.main:app --reload --port 8000
 celery -A app.worker.tasks worker --loglevel=info
 ```
 
-## API endpoints
+Keycloak se configura automáticamente (~60s). Consola: `http://localhost:8081` (`admin`/`admin`).
+Usuarios creados: `admin/admin123`, `operator/operator123`, `viewer/viewer123`.
 
-| Método | Ruta | Descripción |
+## Endpoints
+
+| Método | Ruta | Roles |
 |---|---|---|
-| `GET` | `/api/v1/models` | Lista modelos `.pt` disponibles |
-| `POST` | `/api/v1/detections` | Envía imagen para detección (multipart) |
-| `GET` | `/api/v1/frames/{id}` | Obtiene imagen de un fotograma |
-| `GET` | `/api/v1/frames/search` | Búsqueda con filtros |
-
-### POST /detections
-
-```bash
-curl -X POST http://localhost:8000/api/v1/detections \
-  -F "file=@foto.jpg" \
-  -F "model_id=yolov8n.pt" \
-  -F "latitude=-34.6037" \
-  -F "longitude=-58.3816" \
-  -F 'extra_metadata={"source":"camara1","lugar":"puerta_principal"}'
-```
-
-### GET /frames/search
-
-```
-GET /api/v1/frames/search?min_lat=-35&max_lat=-34&detected_class=person
-```
+| `GET` | `/api/v1/models` | admin, operator, viewer |
+| `POST` | `/api/v1/detections` | admin, operator |
+| `GET` | `/api/v1/frames/{id}` | admin, operator, viewer |
+| `GET` | `/api/v1/frames/search` | admin, operator, viewer |
+| `POST` | `/api/v1/persons` | admin, operator |
+| `GET` | `/api/v1/persons/{id}` | admin, operator, viewer |
+| `POST` | `/api/v1/persons/{id}/embeddings` | admin, operator |
+| `POST` | `/api/v1/face-recognition` | admin, operator |
+| `POST` | `/api/v1/auth/face/login` | público |
+| `GET` | `/api/v1/auth/me` | admin, operator, viewer |
 
 ## Comandos
 

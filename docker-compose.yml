@@ -1,8 +1,69 @@
 services:
 
+  # Keycloak DB (PostgreSQL)
+  #soporta mysql pero la documentación recomienda postgres por cuestiones de compatibilidad
+  keycloak_db:
+    image: postgres:16
+    container_name: soa_keycloak_db
+    environment:
+      POSTGRES_DB: ${KEYCLOAK_DB_NAME}
+      POSTGRES_USER: ${KEYCLOAK_DB_USER}
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_DB_USER} -d ${KEYCLOAK_DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Keycloak (OpenID Provider)
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: soa_keycloak
+    ports:
+      - "8081:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak_db:5432/${KEYCLOAK_DB_NAME}
+      KC_DB_USERNAME: ${KEYCLOAK_DB_USER}
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KC_HTTP_ENABLED: "true"
+      KC_BOOTSTRAP_ADMIN_USERNAME: temp-admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: temp-admin
+      KC_HOSTNAME_URL: http://keycloak:8080
+      KC_HOSTNAME_STRICT: "false"
+    command: start-dev
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && exec 3<&- 3>&-"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+    depends_on:
+      keycloak_db:
+        condition: service_healthy
+
+  # Keycloak setup (crea admin permanente, realm soa, client, roles)
+  keycloak_setup:
+    image: quay.io/keycloak/keycloak:26.0
+    container_name: soa_keycloak_setup
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    environment:
+      KEYCLOAK_ADMIN_USER: ${KEYCLOAK_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    entrypoint: ["/bin/bash", "/opt/setup/keycloak-setup.sh"]
+    volumes:
+      - ./keycloak-setup.sh:/opt/setup/keycloak-setup.sh
+      - ./.env:/host-env/.env
+
   db:
     image: mysql:8.0
     container_name: soa_mysql
+    ports:
+      - "3306:3306"
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -50,7 +111,7 @@ services:
       - seaweed_data:/data
 
   api:
-    image: aggostinaperez/soa-api:7.2
+    image: aggostinaperez/soa-api:8.2
     container_name: soa_fastapi
     ports:
       - "8000:8000"
@@ -62,6 +123,12 @@ services:
       - MYSQL_DATABASE=${MYSQL_DATABASE}
       - MYSQL_HOST=db 
       - CELERY_BROKER_URL=redis://redis:6379/0
+      - KEYCLOAK_SERVER_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=${KEYCLOAK_REALM}
+      - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
+      - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - FACE_AUTH_SECRET=${FACE_AUTH_SECRET}
+      - FACE_AUTH_TOKEN_EXPIRATION=${FACE_AUTH_TOKEN_EXPIRATION}
     depends_on:
       db:
         condition: service_healthy
@@ -104,3 +171,4 @@ services:
 volumes:
   mysql_data:
   seaweed_data:
+  keycloak_db_data:

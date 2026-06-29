@@ -3,6 +3,7 @@
 #Inicializa la app, monta los routers y crea las tablas en la db.
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from api.routes_s1 import router as s1_router
 from api.routes_s2 import router as s2_router
@@ -10,15 +11,29 @@ from api.routes_s3 import router as s3_router
 from api.routes_s4 import router as s4_router
 from api.routes_s5 import router as s5_router
 from database.session import Base, engine
+from routes_auth import router as auth_router
 
 app = FastAPI(
     title="SOA Face Detection API",
     version="1.0.0",
-    description="API REST para detección facial con YOLO, "
-    "procesamiento asincrónico con Celery y almacenamiento en SeaweedFS.",
+    description="API REST para deteccion facial con YOLO, "
+    "procesamiento asincronico con Celery y almacenamiento en SeaweedFS.",
+    swagger_ui_init_oauth={
+        "clientId": "soa",
+        "appName": "SOA Face Detection",
+        "usePkceWithAuthorizationCodeGrant": True,
+    },
 )
 
-# Montar todos los routers bajo el prefijo /api/v1
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+app.include_router(auth_router, prefix="/api/v1", tags=["Auth"])
 app.include_router(s1_router, prefix="/api/v1", tags=["Models"])
 app.include_router(s2_router, prefix="/api/v1", tags=["Detections"])
 app.include_router(s4_router, prefix="/api/v1", tags=["Frames"])
@@ -31,7 +46,8 @@ def on_startup() -> None:
     
     # Crea las tablas en MySQL al iniciar la aplicación
     Base.metadata.create_all(bind=engine)
-    
+
+
 @app.get("/health", tags=["Monitoreo"])
 def health_check():
     # Endpoint de uso interno para el Healthcheck

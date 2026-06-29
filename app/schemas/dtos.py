@@ -56,8 +56,13 @@ class PersonResponse(BaseModel):
     apellido: str
     email: str
     extra: Optional[dict[str, Any]] = None
+    keycloak_user_id: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PersonUpdate(BaseModel):
+    extra: Optional[dict[str, Any]] = None
 
 
 class FrameSearchResponse(BaseModel):
@@ -91,3 +96,52 @@ class FaceRecognitionResponse(BaseModel):
     nombre: Optional[str] = None
     apellido: Optional[str] = None
     confidence: float
+
+
+class KeycloakLinkRequest(BaseModel):
+    personId: str
+
+
+class KeycloakLinkResponse(BaseModel):
+    personId: str
+    keycloak_user_id: str
+    message: str
+
+
+class FaceLoginRequest(BaseModel):
+    image: str
+    threshold: float = 0.6
+
+
+class FaceLoginResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
+    personId: str
+    nombre: str
+    apellido: str
+
+
+class FaceVerifyRequest(BaseModel):
+    image: str
+    threshold: float = 0.6
+
+
+class FaceVerifyResponse(BaseModel):
+    verified: bool
+    confidence: float
+    message: str
+
+
+class AuthMeResponse(BaseModel):
+    sub: str
+    email: Optional[str] = None
+    preferred_username: Optional[str] = None
+    roles: list[str] = []
+    linked_person: Optional[PersonResponse] = None
+
+
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_in: int
