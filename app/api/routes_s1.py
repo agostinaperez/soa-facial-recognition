@@ -1,15 +1,13 @@
+from fastapi import APIRouter, Depends
 
-# Servicio 1: GET /api/v1/models
-from fastapi import APIRouter
-
+from security import require_roles
 from services.yolo_core import get_available_models
 
 router = APIRouter()
 
 
 @router.get("/models")
-def list_models() -> list[str]:
-
-    # Escanea YOLO_WEIGHTS_DIR y devuelve
-    # los nombres de archivos .pt encontrados.
+def list_models(
+    _: dict = Depends(require_roles(["admin", "operator", "viewer"])),
+) -> list[str]:
     return get_available_models()

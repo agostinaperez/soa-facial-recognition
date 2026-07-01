@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from database.session import get_db
 from models.entities import Detection, Frame
 from schemas.dtos import FrameSearchResponse, DetectionResponse
+from security import require_roles
 
 router = APIRouter()
 
@@ -31,6 +32,7 @@ def search_frames(
     metadata_key: list[str] = Query(None),
     metadata_value: list[str] = Query(None),
     db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator", "viewer"])),
 ) -> list[FrameSearchResponse]:
 
     if metadata_key and metadata_value and len(metadata_key) != len(metadata_value):

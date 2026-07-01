@@ -62,6 +62,8 @@ class Person(Base):
     apellido = Column(String(255), nullable=False)
     email = Column(String(255), nullable=False, unique=True)
     extra = Column(JSON, nullable=True)
+    keycloak_user_id = Column(String(255), nullable=True, unique=True)
+
 
 # Tabla embedding_tasks: seguimiento del estado de c imagen encolada
 class EmbeddingTask(Base):

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from database.session import get_db
 from models.entities import Frame
 from schemas.dtos import FrameCreateResponse
+from security import require_roles
 from services.seaweed_ds import upload_image
 from services.yolo_core import get_available_models
 from worker.celery_app import celery_app
@@ -24,9 +25,9 @@ async def create_detection(
     longitude: float = Form(None),
     extra_metadata: str = Form("{}"),
     db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator"])),
 ) -> dict:
-    
-    # Verifica que el modelo exista
+
     available_models = get_available_models()
 
     if model_id not in available_models:
@@ -43,9 +44,7 @@ async def create_detection(
         raise HTTPException(status_code=400, detail="El campo extra_metadata debe ser un JSON válido")
     
     image_bytes = await file.read()
-    
-    # Delegar la subida (E/S síncrona) a un hilo secundario para evitar 
-    # bloquear el Event Loop principal de FastAPI durante la transferencia.
+
     seaweed_fid = await asyncio.to_thread(
         upload_image, image_bytes, file.filename or "image.jpg"
     )

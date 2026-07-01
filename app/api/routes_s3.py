@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from database.session import get_db
 from models.entities import Frame
+from security import require_roles
 from services.seaweed_ds import get_image
 
 router = APIRouter()
@@ -22,6 +23,7 @@ async def get_frame_image(
     frame_id: str,
     thumbnail: bool = Query(False),
     db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator", "viewer"])),
 ) -> Response:
     #busco si existe un frame con ese id, si no existe tiro un error 404
     frame = db.query(Frame).filter(Frame.frameId == frame_id).first()
