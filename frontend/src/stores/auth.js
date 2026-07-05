@@ -54,17 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         const data = await response.json()
-
-        // Los roles vienen de Keycloak via /auth/me.
-        // Como fallback, si no viene ningún rol conocido, lo inferimos del username
-        // (admin, operator y viewer son los únicos usuarios del sistema)
-        const knownRoles = ['admin', 'operator', 'viewer']
-        const hasKnownRole = (data.roles || []).some(r => knownRoles.includes(r))
-
-        user.value = {
-            ...data,
-            roles: hasKnownRole ? data.roles : [data.preferred_username].filter(r => knownRoles.includes(r))
-        }
+        user.value = data
         localStorage.setItem('user', JSON.stringify(user.value))
     }
 
