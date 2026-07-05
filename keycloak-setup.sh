@@ -97,14 +97,12 @@ else
 fi
 
 # --- Roles (admin, operator, viewer) ---
+# Keycloak 26 cambió el output de get roles; creamos los roles
+# con create e ignoramos error si ya existen.
 for role in admin operator viewer; do
-  ROLE_EXISTS=$(try kcadm get roles -r soa -q name="$role" --fields name)
-  if ! echo "$ROLE_EXISTS" | grep -q '"name"'; then
-    kcadm create roles -r soa -s name="$role" -s "description=Rol $role"
-    echo "Role $role created."
-  else
-    echo "Role $role already exists."
-  fi
+  kcadm create roles -r soa -s name="$role" -s "description=Rol $role" 2>/dev/null \
+    && echo "Role $role created." \
+    || echo "Role $role already exists."
 done
 
 # --- Client soa (confidencial, con Direct Access Grant) ---
@@ -151,11 +149,14 @@ for user in admin operator viewer; do
       -s firstName="$user" -s lastName="$user" \
       -s emailVerified=true -s enabled=true
     kcadm set-password -r soa --username "$user" --new-password "${user}123"
-    kcadm add-roles -r soa --uusername "$user" --rolename "$user"
     echo "User $user created."
   else
     echo "User $user already exists."
   fi
+  # Asignar rol siempre (por si el usuario existía pero no tenía el rol asignado)
+  kcadm add-roles -r soa --uusername "$user" --rolename "$user" 2>/dev/null \
+    && echo "  -> Role $user assigned to user $user." \
+    || echo "  -> Role $user already assigned to user $user."
 done
 
 # --- Get or regenerate client secret ---
