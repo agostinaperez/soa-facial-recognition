@@ -3,6 +3,7 @@
 # encola inferencia en Celery y retorna frame_id inmediatamente.
 import asyncio
 import json
+import hashlib
 
 from fastapi import APIRouter, Depends, File, Form, UploadFile, HTTPException
 from sqlalchemy.orm import Session
@@ -44,6 +45,18 @@ async def create_detection(
         raise HTTPException(status_code=400, detail="El campo extra_metadata debe ser un JSON válido")
     
     image_bytes = await file.read()
+    
+    image_hash = hashlib.sha256(image_bytes).hexdigest()
+
+    # Verificar si el hash ya existe en la Base de Datos
+    existing_frame = db.query(Frame).filter(Frame.image_hash == image_hash).first()
+    
+    if existing_frame:
+        # Si ya existe, retornamos inmediatamente los datos del frame existente sin procesar nada más
+        return {
+            "frame_id": existing_frame.frameId,
+            "message": f"La imagen ya estaba cargada. Se recuperó el ID existente: {existing_frame.frameId}",
+        }
 
     seaweed_fid = await asyncio.to_thread(
         upload_image, image_bytes, file.filename or "image.jpg"
@@ -56,6 +69,7 @@ async def create_detection(
         longitude=longitude,
         extra_metadata=metadata_dict,
         image_url=seaweed_fid,
+        image_hash=image_hash,
     )
     db.add(frame)
     db.commit()
