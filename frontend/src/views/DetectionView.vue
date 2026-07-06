@@ -62,8 +62,8 @@
         <v-card class="pa-4">
           <v-card-title>Resultado</v-card-title>
           <v-card-text>
-            <p class="mb-2"><strong>Frame ID:</strong> {{ result.frameId }}</p>
-            <p class="mb-2"><strong>Estado:</strong> {{ result.status }}</p>
+            <p class="mb-2"><strong>Frame ID:</strong> {{ result.frame_id }}</p>
+            <p class="mb-2"><strong>Estado:</strong> {{ result.message }}</p>
             <v-divider class="my-3" />
             <p class="text-caption text-grey">
               Las detecciones se procesan en segundo plano. Podés consultar el resultado en Búsqueda usando el Frame ID.
@@ -109,10 +109,11 @@ async function handleSubmit() {
 
   try {
     const formData = new FormData()
-    formData.append('file', image.value[0])
+    const file = Array.isArray(image.value) ? image.value[0] : image.value
+    formData.append('file', file)
     formData.append('model_id', selectedModel.value)
-    formData.append('lat', lat.value)
-    formData.append('lon', lon.value)
+    formData.append('latitude', lat.value)
+    formData.append('longitude', lon.value)
 
     const response = await api.postForm('/detections', formData)
 
