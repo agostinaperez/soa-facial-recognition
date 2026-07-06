@@ -1,0 +1,39 @@
+meta {
+  name: token solicitude
+  type: http
+  seq: 1
+}
+
+post {
+  url: http://localhost:8081/realms/soa/protocol/openid-connect/token
+  body: formUrlEncoded
+  auth: inherit
+}
+
+body:form-urlencoded {
+  client_id: soa
+  client_secret: jLlpkGUVsnJ7h8fmSe6ogR8YFg81febA
+  grant_type: password
+  username: admin
+  password: admin123
+}
+
+script:post-response {
+  // Verificar que la respuesta sea exitosa
+  if (res.getStatus() === 200) {
+    const data = res.getBody();
+    
+    // Guardar el token en la variable de entorno
+    // Ajusta 'data.token' según la estructura exacta de tu JSON
+    if (data && data.access_token) {
+      console.log(data.access_token);
+      bru.setEnvVar("jwt_token", data.access_token);
+      console.log("Token guardado exitosamente.");
+    }
+  }
+}
+
+settings {
+  encodeUrl: true
+  timeout: 0
+}
