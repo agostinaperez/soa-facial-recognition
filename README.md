@@ -59,6 +59,12 @@ celery -A app.worker.tasks worker --loglevel=info
 Keycloak se configura automáticamente (~60s). Consola: `http://localhost:8081` (`admin`/`admin`).
 Usuarios creados: `admin/admin123`, `operator/operator123`, `viewer/viewer123`.
 
+## Escalado de contenedores
+ El sistema cuenta con la posibilidad de aumentar el numero de workers y volumenes de almacenamiento de archivos, el siguiente comando le permitira escalar la cantidad
+ ```bash
+ docker compose up -d --scale seaweed_volume=<n° volumenes de seaweed> --scale worker=<n° workers>
+ ```
+
 ## Endpoints
 
 | Método | Ruta | Roles |
