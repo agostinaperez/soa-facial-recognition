@@ -1,6 +1,6 @@
 <template>
   <v-app-bar color="primary" flat>
-    <v-app-bar-title>SOA — Face Detection</v-app-bar-title>
+    <v-app-bar-title>Detecciones y Reconocimiento</v-app-bar-title>
 
     <template v-if="auth.isAuthenticated">
       <v-btn

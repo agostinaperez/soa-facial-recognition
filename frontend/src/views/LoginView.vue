@@ -3,7 +3,7 @@
     <v-row align="center" justify="center">
       <v-col cols="12" sm="8" md="4">
         <v-card class="pa-4">
-          <v-card-title class="text-h5 mb-4">SOA — Iniciar sesión</v-card-title>
+          <v-card-title class="text-h5 mb-4">Iniciar sesión</v-card-title>
           <v-card-text>
             <v-text-field
               v-model="username"

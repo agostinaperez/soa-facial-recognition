@@ -53,11 +53,33 @@
           <v-card-text>
             <template v-if="result.personId">
               <v-alert type="success" class="mb-3">Persona identificada</v-alert>
-              <p class="mb-1"><strong>Nombre:</strong> {{ result.nombre }} {{ result.apellido }}</p>
-              <p class="mb-1"><strong>ID:</strong> {{ result.personId }}</p>
-              <p class="mb-1">
-                <strong>Confianza:</strong> {{ (result.confidence * 100).toFixed(1) }}%
-              </p>
+              <v-list density="comfortable">
+              <v-list-item
+                prepend-icon="mdi-account"
+                title="Persona"
+                :subtitle="`${result.nombre} ${result.apellido}`"
+              />
+
+              <v-list-item
+                prepend-icon="mdi-card-account-details"
+                title="ID"
+                :subtitle="result.personId"
+              />
+
+            </v-list>
+
+            <p class="mt-4 mb-2">
+              <strong>Confianza</strong>
+            </p>
+
+            <v-progress-linear
+              :model-value="result.confidence * 100"
+              color="success"
+              height="20"
+              rounded
+            >
+              {{ (result.confidence * 100).toFixed(1) }}%
+            </v-progress-linear>
             </template>
             <template v-else>
               <v-alert type="warning" class="mb-3">No se identificó ninguna persona</v-alert>

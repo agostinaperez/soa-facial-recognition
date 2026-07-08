@@ -101,6 +101,46 @@ def create_embeddings(
     }
 
 
+@router.get("/persons", response_model=list[PersonResponse])
+def list_persons(
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator", "viewer"])),
+) -> list[Person]:
+    return db.query(Person).all()
+
+
+@router.put("/persons/{personId}", response_model=PersonResponse)
+def update_person(
+    personId: str,
+    body: PersonCreate,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin", "operator"])),
+) -> Person:
+    person = db.query(Person).filter(Person.personId == personId).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
+    person.nombre = body.nombre
+    person.apellido = body.apellido
+    person.email = body.email
+    person.extra = body.extra
+    db.commit()
+    db.refresh(person)
+    return person
+
+
+@router.delete("/persons/{personId}", status_code=204)
+def delete_person(
+    personId: str,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin"])),
+) -> None:
+    person = db.query(Person).filter(Person.personId == personId).first()
+    if not person:
+        raise HTTPException(status_code=404, detail="Persona no encontrada")
+    db.delete(person)
+    db.commit()
+
+    
 @router.post("/face-recognition", response_model=FaceRecognitionResponse)
 def face_recognition_endpoint(
     body: FaceRecognitionRequest,
