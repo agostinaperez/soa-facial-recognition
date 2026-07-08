@@ -11,11 +11,26 @@ post {
 }
 
 body:multipart-form {
-  file: @file(/home/fabri/Escritorio/imagenes/fabri/jpg/IMG_20260417_172052.jpg)
-  model_id: yolov8n.pt
+  file: @file(/home/ben/Documentos/SOA/tp_final/cat.jpeg) @contentType(image/jpeg)
+  model_id: yolov5nu.pt
   latitude: -31.411986597576682
   longitude: -64.20075777507294
   extra_metadata: {"camara": "frontal", "lugar" : "casa"}
+}
+
+script:post-response {
+  // Verificar que la respuesta sea exitosa
+  if (res.getStatus() === 201) {
+    const data = res.getBody();
+    
+    // Guardar el token en la variable de entorno
+    // Ajusta 'data.token' según la estructura exacta de tu JSON
+    if (data && data.frame_id) {
+      console.log(data.frame_id);
+      bru.setEnvVar("current_frameid", data.frame_id);
+      console.log("Frame ID actualizado.");
+    }
+  }
 }
 
 settings {

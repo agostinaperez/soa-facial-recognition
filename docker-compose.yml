@@ -9,6 +9,8 @@ services:
       POSTGRES_DB: ${KEYCLOAK_DB_NAME}
       POSTGRES_USER: ${KEYCLOAK_DB_USER}
       POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    ports:
+      - "5432:5432"
     volumes:
       - keycloak_db_data:/var/lib/postgresql/data
     healthcheck:
@@ -100,24 +102,21 @@ services:
   # SeaweedFS Volume (Donde realmente se guardan los archivos)
   seaweed_volume:
     image: chrislusf/seaweedfs
-    container_name: soa_seaweed_volume
+    command: "volume -mserver=seaweed_master:9333 -port=8080 -ip.bind=0.0.0.0"
     ports:
-      - "8080:8080"
-      - "18080:18080"
-    command: "volume -mserver=seaweed_master:9333 -port=8080 -ip=seaweed_volume"
+      - "8080"
     depends_on:
       - seaweed_master
     volumes:
-      - seaweed_data:/data
+      - /data
 
   api:
-    image: aggostinaperez/soa-api:8.2
+    image: twbenjaminvargas/soa-api:1.2
     container_name: soa_fastapi
     ports:
       - "8000:8000"
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
-      - SEAWEED_VOLUME=http://seaweed_volume:8080 
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -144,11 +143,9 @@ services:
   # Worker Celery separado: concentra YOLO/OpenCV y sus dependencias nativas
   # Esto evita inflar la imagen HTTP con librerías pesadas que solo sirven para inferencia
   worker:
-    image: lbiondi733/soa-worker:4.5
-    container_name: soa_worker
+    image: twbenjaminvargas/soa-worker:1.1
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
-      - SEAWEED_VOLUME=http://seaweed_volume:8080
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
       - MYSQL_DATABASE=${MYSQL_DATABASE}
@@ -156,6 +153,12 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - AZURE_FACE_ENDPOINT=${AZURE_FACE_ENDPOINT}
       - AZURE_FACE_KEY=${AZURE_FACE_KEY}
+       # Enviar confirmación (ACK) SOLO cuando la función finalice con éxito
+      - CELERY_TASK_ACKS_LATE=True
+      # Procesar estrictamente de a 1 tarea a la vez (evita inflar RAM con YOLO)
+      - CELERY_WORKER_PREFETCH_MULTIPLIER=1
+      # Si el contenedor muere a mitad de ejecución, rechazar la tarea para que vuelva a Redis
+      - CELERY_TASK_REJECT_ON_WORKER_LOST=True
     depends_on:
       db:
         condition: service_healthy

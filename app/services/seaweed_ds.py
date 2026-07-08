@@ -5,7 +5,6 @@ import os
 import httpx
 
 SEAWEED_MASTER = os.getenv("SEAWEED_MASTER", "http://localhost:9333")
-SEAWEED_VOLUME = os.getenv("SEAWEED_VOLUME", "http://localhost:8080")
 
 _TIMEOUT = 30
 
@@ -40,13 +39,8 @@ def upload_image(file_bytes: bytes, filename: str) -> str:
         file_id: str = data["fid"]
         public_url: str = data.get("publicUrl", data.get("url", ""))
 
-        # Resolución dinámica
-        endpoint = (
-            f"http://{public_url}/{file_id}"
-            if public_url
-            else f"{SEAWEED_VOLUME}/{file_id}"
-        )
-
+        endpoint = f"http://{public_url}/{file_id}"
+        
         # Sube el archivo al servidor de volumen asignado
         upload = client.post(
             endpoint,
@@ -61,9 +55,8 @@ def upload_image(file_bytes: bytes, filename: str) -> str:
 def get_image(file_id: str) -> bytes:
 
     # Descarga una imagen desde SeaweedFS por su file_id.
-    # GET /<file_id> al volume server.
-    # Lanza HTTPStatusError si el archivo no existe (404).
-    with httpx.Client(timeout=_TIMEOUT) as client:
-        resp = client.get(f"{SEAWEED_VOLUME}/{file_id}")
+    with httpx.Client(timeout=_TIMEOUT,follow_redirects=True) as client:
+        # El Master actúa de proxy: GET http://seaweed_master:9333/<file_id>
+        resp = client.get(f"{SEAWEED_MASTER}/{file_id}")
         resp.raise_for_status()
         return resp.content

@@ -20,6 +20,7 @@ class Frame(Base):
     longitude = Column(Float, nullable=True)
     extra_metadata = Column(JSON, nullable=True)
     image_url = Column(String(500), nullable=False)
+    image_hash = Column(String(64), nullable=False, unique=True, index=True)
     created_at = Column(
         DateTime,
         default=lambda: datetime.now(timezone.utc),
