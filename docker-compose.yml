@@ -120,7 +120,7 @@ services:
       - api
 
   api:
-    image: benjaminvargas/soa-api:1.3
+    image: twbenjaminvargas/soa-api:1.3
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
       - MYSQL_USER=${MYSQL_USER}
