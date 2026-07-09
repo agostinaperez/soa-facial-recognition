@@ -8,7 +8,7 @@
 
 import base64
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from database.session import get_db
@@ -24,9 +24,18 @@ router = APIRouter()
 @router.post("/persons", response_model=PersonResponse, status_code=201)
 def create_person(
     body: PersonCreate,
+    response: Response,
     db: Session = Depends(get_db),
     _: dict = Depends(require_roles(["admin", "operator"])),
 ) -> Person:
+    
+    existing_person = db.query(Person).filter(Person.email == body.email).first()
+    
+    if existing_person:
+        # Si ya existe, cambiamos el status a 200 OK y devolvemos sus datos
+        response.status_code = status.HTTP_200_OK
+        return existing_person
+    
     person = Person(
         nombre=body.nombre,
         apellido=body.apellido,

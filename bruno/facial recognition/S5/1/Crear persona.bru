@@ -24,7 +24,7 @@ body:json {
 
 script:post-response {
   // Verificar que la respuesta sea exitosa
-  if (res.getStatus() === 201) {
+  if (res.getStatus() === 201 || res.getStatus() === 200) {
     const data = res.getBody();
     
     // Guardar el token en la variable de entorno
