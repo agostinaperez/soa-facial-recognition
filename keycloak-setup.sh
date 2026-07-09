@@ -111,8 +111,8 @@ if ! echo "$CLIENT_EXISTS" | grep -q '"id"'; then
   CLIENT_ID=$(kcadm create clients -r soa \
     -s clientId=soa -s clientAuthenticatorType=client-secret \
     -s enabled=true \
-    -s 'redirectUris=["http://localhost:8000/*"]' \
-    -s 'webOrigins=["http://localhost:8000"]' \
+    -s 'redirectUris=["http://localhost:8000/*","http://localhost:5173/*"]' \
+    -s 'webOrigins=["http://localhost:8000","http://localhost:5173"]' \
     -s standardFlowEnabled=true \
     -s directAccessGrantsEnabled=true \
     -s publicClient=false -s protocol=openid-connect -i)
