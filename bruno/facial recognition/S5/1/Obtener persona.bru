@@ -5,11 +5,12 @@ meta {
 }
 
 get {
-  url: {{base_url}}/persons/{{person_id}}
+  url: {{base_url}}/persons/{{current_personId}}
   body: none
   auth: inherit
 }
 
 settings {
   encodeUrl: true
+  timeout: 0
 }

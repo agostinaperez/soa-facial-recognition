@@ -5,16 +5,14 @@ meta {
 }
 
 post {
-  url: {{base_url}}/persons/{{person_id}}/embeddings
+  url: {{base_url}}/persons/{{current_personId}}/embeddings
   body: json
   auth: inherit
 }
 
 body:json {
   {
-    "images": [
-      
-    ]
+    "images": {{{encoded_images}}}
   }
 }
 
