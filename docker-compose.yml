@@ -111,7 +111,7 @@ services:
       - /data
 
   api:
-    image: antobadami845/soa-api:7.0
+    image: antobadami845/soa-api:8.0
     container_name: soa_fastapi
     ports:
       - "8000:8000"

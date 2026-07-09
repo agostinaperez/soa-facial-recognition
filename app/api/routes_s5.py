@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database.session import get_db
-from models.entities import EmbeddingTask, Person
+from models.entities import EmbeddingTask, Embedding, Person
 from schemas.dtos import EmbeddingAcceptedResponse, EmbeddingRequest, FaceRecognitionRequest, FaceRecognitionResponse, PersonCreate, PersonResponse
 from security import require_roles
 from services.seaweed_ds import upload_image
@@ -137,6 +137,11 @@ def delete_person(
     person = db.query(Person).filter(Person.personId == personId).first()
     if not person:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
+    
+    # Eliminar registros relacionados antes de borrar la persona
+    db.query(EmbeddingTask).filter(EmbeddingTask.personId == personId).delete()
+    db.query(Embedding).filter(Embedding.personId == personId).delete()
+    
     db.delete(person)
     db.commit()
 
