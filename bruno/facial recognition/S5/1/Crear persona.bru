@@ -12,14 +12,29 @@ post {
 
 body:json {
   {
-      "nombre": "Leandro",
-      "apellido": "Biondi",
-      "email": "leandrobiondi12@gmail.com",
+      "nombre": "Benjamin",
+      "apellido": "Vargas",
+      "email": "bvargas161@alumnos.iua.edu.ar",
       "extra": {
-      "dni": "43793733",
+      "dni": "44078161",
       "area": "sistemas"
       }
   } 
+}
+
+script:post-response {
+  // Verificar que la respuesta sea exitosa
+  if (res.getStatus() === 201 || res.getStatus() === 200) {
+    const data = res.getBody();
+    
+    // Guardar el token en la variable de entorno
+    // Ajusta 'data.token' según la estructura exacta de tu JSON
+    if (data && data.personId) {
+      console.log(data.personId);
+      bru.setEnvVar("current_personId", data.personId);
+      console.log("Person ID actualizado.");
+    }
+  }
 }
 
 settings {

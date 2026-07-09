@@ -60,9 +60,9 @@ Keycloak se configura automáticamente (~60s). Consola: `http://localhost:8081` 
 Usuarios creados: `admin/admin123`, `operator/operator123`, `viewer/viewer123`.
 
 ## Escalado de contenedores
- El sistema cuenta con la posibilidad de aumentar el numero de workers y volumenes de almacenamiento de archivos, el siguiente comando le permitira escalar la cantidad
+ El sistema cuenta con la posibilidad de aumentar el numero de workers, volumenes de almacenamiento de archivos y apis ejecutandose. El siguiente comando le permitira escalar la cantidad de cada uno segun desee:
  ```bash
- docker compose up -d --scale seaweed_volume=<n° volumenes de seaweed> --scale worker=<n° workers>
+ docker compose up -d --scale seaweed_volume=<n° volumenes de seaweed> --scale worker=<n° workers> --scale api=<n° apis>
  ```
 
 ## Endpoints
