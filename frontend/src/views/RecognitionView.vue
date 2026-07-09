@@ -1,41 +1,48 @@
 <template>
-  <v-container>
-    <v-row>
-      <v-col cols="12">
-        <h2 class="text-h5 mb-4">Reconocimiento facial</h2>
-      </v-col>
-    </v-row>
+  <v-container class="py-6">
+    <div class="text-h6 font-weight-bold mb-1">Reconocimiento facial</div>
+    <div class="text-medium-emphasis text-body-2 mb-5">Identificá una persona a partir de una imagen</div>
 
     <v-row>
       <v-col cols="12" md="5">
-        <v-card class="pa-4">
-          <v-card-title>Configuración</v-card-title>
-          <v-card-text>
+        <v-card flat border color="surface-variant">
+          <v-card-text class="pa-5">
+            <div class="text-caption text-medium-emphasis text-uppercase mb-2">Imagen</div>
             <v-file-input
               v-model="image"
-              label="Imagen"
               accept="image/*"
               variant="outlined"
-              prepend-icon="mdi-face-recognition"
-              class="mb-3"
+              density="comfortable"
+              prepend-icon=""
+              prepend-inner-icon="mdi-face-recognition"
               :clearable="false"
+              placeholder="Seleccioná un archivo"
+              class="mb-4"
             />
-            <v-text-field
-              v-model="threshold"
-              label="Umbral de confianza (0 a 1)"
-              variant="outlined"
-              type="number"
-              step="0.1"
-              min="0"
-              max="1"
-              class="mb-3"
-            />
-            <v-alert v-if="error" type="error" class="mb-3">{{ error }}</v-alert>
+
+            <div style="color: #8b949e; font-size: 12px; text-transform: uppercase; margin-bottom: 4px;">
+              Umbral de confianza
+            </div>
+            <div class="d-flex align-center gap-3 mb-4">
+              <v-slider
+                v-model="threshold"
+                :min="0"
+                :max="1"
+                :step="0.05"
+                color="primary"
+                hide-details
+                class="flex-grow-1"
+              />
+              <span class="text-body-2 font-weight-medium" style="min-width: 36px; color: #e6edf3">{{ threshold }}</span>
+            </div>
+
+            <v-alert v-if="error" type="error" variant="tonal" density="compact" :text="error" />
           </v-card-text>
-          <v-card-actions>
+          <v-card-actions class="px-5 pb-5">
             <v-btn
               block
               color="primary"
+              variant="flat"
               size="large"
               :loading="loading"
               :disabled="!image"
@@ -48,47 +55,62 @@
       </v-col>
 
       <v-col cols="12" md="7" v-if="result !== null">
-        <v-card class="pa-4">
-          <v-card-title>Resultado</v-card-title>
-          <v-card-text>
+        <v-card flat border :color="result.personId ? 'surface-variant' : 'surface-variant'">
+          <v-card-text class="pa-5">
             <template v-if="result.personId">
-              <v-alert type="success" class="mb-3">Persona identificada</v-alert>
-              <v-list density="comfortable">
-              <v-list-item
-                prepend-icon="mdi-account"
-                title="Persona"
-                :subtitle="`${result.nombre} ${result.apellido}`"
-              />
-
-              <v-list-item
-                prepend-icon="mdi-card-account-details"
-                title="ID"
-                :subtitle="result.personId"
-              />
-
-            </v-list>
-
-            <p class="mt-4 mb-2">
-              <strong>Confianza</strong>
-            </p>
-
-            <v-progress-linear
-              :model-value="result.confidence * 100"
-              color="success"
-              height="20"
-              rounded
-            >
-              {{ (result.confidence * 100).toFixed(1) }}%
-            </v-progress-linear>
+              <div class="d-flex align-center mb-4">
+                <v-icon color="success" size="20" class="mr-2">mdi-check-circle</v-icon>
+                <span class="text-body-2 font-weight-medium text-success">Persona identificada</span>
+              </div>
+              <div class="d-flex align-center mb-5">
+                <v-avatar color="primary" size="48" class="mr-4">
+                  <span class="text-body-1 font-weight-bold">
+                    {{ result.nombre[0] }}{{ result.apellido[0] }}
+                  </span>
+                </v-avatar>
+                <div>
+                  <div class="text-h6 font-weight-bold">{{ result.nombre }} {{ result.apellido }}</div>
+                  <div class="font-mono text-caption text-medium-emphasis">{{ result.personId }}</div>
+                </div>
+              </div>
+              <div class="text-caption text-medium-emphasis mb-2">Confianza</div>
+              <div class="d-flex align-center gap-3">
+                <v-progress-linear
+                  :model-value="result.confidence * 100"
+                  color="success"
+                  bg-color="surface"
+                  height="8"
+                  rounded
+                  class="flex-grow-1"
+                />
+                <span class="text-body-2 font-weight-bold text-success" style="min-width: 44px">
+                  {{ (result.confidence * 100).toFixed(1) }}%
+                </span>
+              </div>
             </template>
+
             <template v-else>
-              <v-alert type="warning" class="mb-3">No se identificó ninguna persona</v-alert>
-              <p class="mb-1">
-                <strong>Confianza máxima alcanzada:</strong> {{ (result.confidence * 100).toFixed(1) }}%
-              </p>
-              <p class="text-caption text-grey">
+              <div class="d-flex align-center mb-4">
+                <v-icon color="warning" size="20" class="mr-2">mdi-alert-circle-outline</v-icon>
+                <span class="text-body-2 font-weight-medium text-warning">No se identificó ninguna persona</span>
+              </div>
+              <div class="text-caption text-medium-emphasis mb-2">Confianza máxima alcanzada</div>
+              <div class="d-flex align-center gap-3">
+                <v-progress-linear
+                  :model-value="result.confidence * 100"
+                  color="warning"
+                  bg-color="surface"
+                  height="8"
+                  rounded
+                  class="flex-grow-1"
+                />
+                <span class="text-body-2 font-weight-bold text-warning" style="min-width: 44px">
+                  {{ (result.confidence * 100).toFixed(1) }}%
+                </span>
+              </div>
+              <div class="text-caption text-medium-emphasis mt-3">
                 El resultado no superó el umbral de {{ threshold }}.
-              </p>
+              </div>
             </template>
           </v-card-text>
         </v-card>
@@ -113,14 +135,12 @@ async function handleRecognition() {
   loading.value = true
   try {
     const file = Array.isArray(image.value) ? image.value[0] : image.value
-
     const base64 = await new Promise((resolve, reject) => {
       const reader = new FileReader()
       reader.onload = () => resolve(reader.result.split(',')[1])
       reader.onerror = reject
       reader.readAsDataURL(file)
     })
-
     const response = await api.post('/face-recognition', {
       image: base64,
       threshold: parseFloat(threshold.value),
@@ -137,3 +157,9 @@ async function handleRecognition() {
   }
 }
 </script>
+
+<style scoped>
+.font-mono {
+  font-family: 'Courier New', Courier, monospace;
+}
+</style>
