@@ -17,6 +17,8 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.base.txt requirements.worker.txt requirements.txt ./
 RUN pip install --upgrade pip
+
+RUN pip install --no-cache-dir torch torchvision --index-url https://download.pytorch.org/whl/cpu
 RUN pip install --default-timeout=100 --no-cache-dir -r requirements.worker.txt
 
 COPY . .

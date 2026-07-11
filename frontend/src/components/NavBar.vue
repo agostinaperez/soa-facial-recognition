@@ -45,6 +45,15 @@
       >
         Reconocimiento
       </v-btn>
+      <v-btn
+        :to="{ name: 'rps' }"
+        variant="text"
+        size="small"
+        prepend-icon="mdi-hand-back-right-outline"
+        :active="route.name === 'rps'"
+      >
+        Piedra, Papel o Tijera
+      </v-btn>
 
       <v-divider vertical class="mx-2 my-3" />
 

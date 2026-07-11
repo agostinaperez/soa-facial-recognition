@@ -1,5 +1,6 @@
 import base64
 import logging
+import random
 
 import face_recognition as fr
 import numpy as np
@@ -183,3 +184,50 @@ def face_recognition_task(image_b64: str, threshold: float) -> dict:
         return {"personId": None, "confidence": round(confidence, 4)}
     finally:
         db.close()
+
+
+RPS_MODEL_ID = "rps_best.pt"
+RPS_CHOICES = ["Rock", "Paper", "Scissors"]
+RPS_BEATS = {"Rock": "Scissors", "Scissors": "Paper", "Paper": "Rock"}
+# El umbral global de yolo_core (0.70) está calibrado para detección de objetos/personas
+# y es demasiado estricto para gestos de mano en condiciones reales de webcam.
+RPS_MIN_CONFIDENCE = 0.25
+
+
+@celery_app.task(name="worker.tasks.rps_play_task")
+def rps_play_task(image_b64: str) -> dict:
+    """Clasifica el gesto de la mano del jugador (Piedra/Papel/Tijera) vía YOLO,
+    elige la jugada de la máquina al azar, y calcula el resultado.
+    """
+    image_bytes = base64.b64decode(image_b64)
+
+    from services.yolo_core import predict
+
+    detections = predict(RPS_MODEL_ID, image_bytes, min_confidence=RPS_MIN_CONFIDENCE)
+    logger.info("rps_play_task: %d detección(es) -> %s", len(detections), detections)
+
+    if len(detections) == 0:
+        return {"error": "no_gesture", "detail": "No se detectó ningún gesto de piedra, papel o tijera en la imagen"}
+    if len(detections) > 1:
+        return {
+            "error": "ambiguous_gesture",
+            "detail": "Se detectó más de un gesto en la imagen. Asegurate de mostrar una sola mano bien clara",
+        }
+
+    detection = detections[0]
+    gesture = detection["class_name"]
+    computer_choice = random.choice(RPS_CHOICES)
+
+    if gesture == computer_choice:
+        result = "tie"
+    elif RPS_BEATS[gesture] == computer_choice:
+        result = "win"
+    else:
+        result = "lose"
+
+    return {
+        "gesture": gesture,
+        "computer_choice": computer_choice,
+        "result": result,
+        "confidence": round(detection["confidence"], 4),
+    }

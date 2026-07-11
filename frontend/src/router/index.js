@@ -34,6 +34,12 @@ const routes = [
     name: 'recognition',
     component: () => import('@/views/RecognitionView.vue'),
     meta: { requiresAuth: true, requiresOperator: true }
+  },
+  {
+    path: '/rps',
+    name: 'rps',
+    component: () => import('@/views/RockPaperScissorsView.vue'),
+    meta: { requiresAuth: true }
   }
 ]
 

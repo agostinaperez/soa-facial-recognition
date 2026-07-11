@@ -98,6 +98,17 @@ class FaceRecognitionResponse(BaseModel):
     confidence: float
 
 
+class RPSPlayRequest(BaseModel):
+    image: str
+
+
+class RPSPlayResponse(BaseModel):
+    gesture: str
+    computer_choice: str
+    result: str
+    confidence: float
+
+
 class KeycloakLinkRequest(BaseModel):
     personId: str
 

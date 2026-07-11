@@ -10,6 +10,7 @@ from api.routes_s2 import router as s2_router
 from api.routes_s3 import router as s3_router
 from api.routes_s4 import router as s4_router
 from api.routes_s5 import router as s5_router
+from api.routes_srps import router as srps_router
 from database.session import Base, engine
 from routes_auth import router as auth_router
 
@@ -39,6 +40,7 @@ app.include_router(s2_router, prefix="/api/v1", tags=["Detections"])
 app.include_router(s4_router, prefix="/api/v1", tags=["Frames"])
 app.include_router(s5_router, prefix="/api/v1", tags=["Persons"])
 app.include_router(s3_router, prefix="/api/v1", tags=["Frames"])
+app.include_router(srps_router, prefix="/api/v1", tags=["Rock Paper Scissors"])
 
 
 @app.on_event("startup")

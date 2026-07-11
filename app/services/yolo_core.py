@@ -25,17 +25,21 @@ def get_available_models() -> list[str]:
     return sorted(f.name for f in p.iterdir() if f.suffix == ".pt")
 
 
-def predict(model_id: str, image_bytes: bytes) -> list[dict]:
+def predict(model_id: str, image_bytes: bytes, min_confidence: float = MIN_CONFIDENCE) -> list[dict]:
 
     # Ejecuta inferencia YOLO sobre una imagen.
     # model_id: nombre del archivo .pt (ej: yolov8n.pt)
     # image_bytes: contenido binario de la imagen
+    # min_confidence: umbral de confianza a aplicar (por defecto, el global MIN_CONFIDENCE)
 
-    # devuelve una lista de detecciones, cada una con: class_name, confidence, bounding_box (x1, y1, x2, y2).    
+    # devuelve una lista de detecciones, cada una con: class_name, confidence, bounding_box (x1, y1, x2, y2).
     from ultralytics import YOLO
     model = _load_model(model_id)
     img = Image.open(BytesIO(image_bytes))
-    results = model(img, device=_get_device())
+    # Ultralytics aplica su propio umbral por defecto (conf=0.25) antes de que
+    # nuestro código vea las boxes. Lo alineamos con min_confidence para que no
+    # se descarten en silencio detecciones que sí queremos considerar.
+    results = model(img, device=_get_device(), conf=min_confidence)
     detections: list[dict] = []
     for r in results:
         for box in r.boxes:
@@ -43,7 +47,7 @@ def predict(model_id: str, image_bytes: bytes) -> list[dict]:
             confidence = float(box.conf[0])
 
             # Ignorar detecciones con baja confianza
-            if confidence < MIN_CONFIDENCE:
+            if confidence < min_confidence:
                 continue
 
             detections.append(
