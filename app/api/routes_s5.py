@@ -14,7 +14,8 @@ from sqlalchemy.orm import Session
 from database.session import get_db
 from models.entities import EmbeddingTask, Embedding, Person
 from schemas.dtos import EmbeddingAcceptedResponse, EmbeddingRequest, FaceRecognitionRequest, FaceRecognitionResponse, PersonCreate, PersonResponse
-from security import require_roles
+from security import require_roles, user_has_any_role
+from services.person_service import get_or_create_person
 from services.seaweed_ds import upload_image
 from worker.celery_app import celery_app
 
@@ -28,24 +29,17 @@ def create_person(
     db: Session = Depends(get_db),
     _: dict = Depends(require_roles(["admin", "operator"])),
 ) -> Person:
-    
+
     existing_person = db.query(Person).filter(Person.email == body.email).first()
-    
+
     if existing_person:
         # Si ya existe, cambiamos el status a 200 OK y devolvemos sus datos
         response.status_code = status.HTTP_200_OK
         return existing_person
-    
-    person = Person(
-        nombre=body.nombre,
-        apellido=body.apellido,
-        email=body.email,
-        extra=body.extra,
+
+    return get_or_create_person(
+        db, body.nombre, body.apellido, body.email, extra=body.extra
     )
-    db.add(person)
-    db.commit()
-    db.refresh(person)
-    return person
 
 
 @router.get("/persons/{personId}", response_model=PersonResponse)
@@ -65,11 +59,20 @@ def create_embeddings(
     personId: str,
     body: EmbeddingRequest,
     db: Session = Depends(get_db),
-    _: dict = Depends(require_roles(["admin", "operator"])),
+    user: dict = Depends(require_roles(["admin", "operator", "viewer"])),
 ) -> dict:
     person = db.query(Person).filter(Person.personId == personId).first()
     if not person:
         raise HTTPException(status_code=404, detail="Persona no encontrada")
+
+    # Un usuario sin rol admin/operator sólo puede subir embeddings para su propia
+    # persona vinculada (autoservicio de enrolamiento facial).
+    if not user_has_any_role(user, ["admin", "operator"]):
+        if person.keycloak_user_id != user.get("sub"):
+            raise HTTPException(
+                status_code=403,
+                detail="Sólo podés subir fotos para tu propia persona vinculada",
+            )
 
     # voy guardando los IDs de las tareas creadas
     # Cada imagen del request genera una tarea independiente en la tabla EmbeddingTask

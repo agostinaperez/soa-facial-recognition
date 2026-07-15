@@ -29,6 +29,27 @@ try() {
   "$@" 2>/dev/null || true
 }
 
+# Habilita el service account del client "soa" y le asigna los roles de
+# realm-management necesarios para que el backend pueda crear usuarios y
+# consultar roles vía la Admin API (app/services/keycloak_admin.py).
+# Idempotente: se llama tanto si el realm ya estaba configurado como si se
+# está creando por primera vez.
+setup_service_account() {
+  local client_id="$1"
+  if kcadm update "clients/$client_id" -r soa -s serviceAccountsEnabled=true; then
+    echo "Service account habilitado en client soa."
+  else
+    echo "ERROR: no se pudo habilitar el service account en client soa." >&2
+    return 1
+  fi
+
+  for role in manage-users view-users query-users view-realm impersonation; do
+    try kcadm add-roles -r soa --uusername service-account-soa \
+      --cclientid realm-management --rolename "$role"
+  done
+  echo "Roles realm-management asignados al service account de soa."
+}
+
 echo "Waiting for Keycloak..."
 wait_for_keycloak && echo "Keycloak is ready!"
 
@@ -55,6 +76,7 @@ if echo "$ADMIN_EXISTS" | grep -q '"id"'; then
         rm -f "$TMP"
         echo "Client secret actualizado en .env"
       fi
+      setup_service_account "$CLIENT_ID"
     fi
     # Eliminar temp-admin si sigue existiendo
     TEMP_ID=$(try kcadm get users -r master -q username=temp-admin --fields id | sed -n 's/.*"id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
@@ -138,6 +160,9 @@ if ! echo "$MAPPER_EXISTS" | grep -q "audience-soa"; then
 else
   echo "Audience mapper already exists."
 fi
+
+# --- Service account del client soa (Admin API para altas de usuarios/roles) ---
+setup_service_account "$CLIENT_ID"
 
 # --- Users in soa realm ---
 # Cada user tiene su rol homónimo. La pass sigue el patrón {username}123.

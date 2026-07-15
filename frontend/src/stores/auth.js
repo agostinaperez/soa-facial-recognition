@@ -16,6 +16,12 @@ export const useAuthStore = defineStore('auth', () => {
     const isOperator = computed(() => roles.value.includes('admin') || roles.value.includes('operator'))
     const isViewer = computed(() => roles.value.includes('admin') || roles.value.includes('operator') || roles.value.includes('viewer'))
 
+    async function setSession(accessToken) {
+        token.value = accessToken
+        localStorage.setItem('token', accessToken)
+        await fetchUser()
+    }
+
     async function login(username, password) {
         const response = await fetch(
         `${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`,
@@ -37,10 +43,23 @@ export const useAuthStore = defineStore('auth', () => {
         }
 
         const data = await response.json()
-        token.value = data.access_token
-        localStorage.setItem('token', data.access_token)
+        await setSession(data.access_token)
+    }
 
-        await fetchUser()
+    async function loginWithFace(imageBase64, threshold = 0.6) {
+        const response = await fetch(`${import.meta.env.VITE_API_URL}/auth/face/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ image: imageBase64, threshold })
+        })
+
+        if (!response.ok) {
+            const data = await response.json().catch(() => ({}))
+            throw new Error(data.detail || 'No se pudo reconocer el rostro')
+        }
+
+        const data = await response.json()
+        await setSession(data.access_token)
     }
 
     async function fetchUser() {
@@ -81,6 +100,6 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
-    return { token, user, isAuthenticated, roles, isAdmin, isOperator, isViewer, login, logout, fetchUser, init }
+    return { token, user, isAuthenticated, roles, isAdmin, isOperator, isViewer, login, loginWithFace, logout, fetchUser, init }
 
 })

@@ -1,4 +1,4 @@
-import os
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
@@ -7,30 +7,35 @@ from database.session import get_db
 from models.entities import Person
 from schemas.dtos import (
     AuthMeResponse,
+    CreateKeycloakUserRequest,
+    CreateKeycloakUserResponse,
     FaceLoginRequest,
     FaceLoginResponse,
     FaceVerifyRequest,
     FaceVerifyResponse,
     KeycloakLinkRequest,
     KeycloakLinkResponse,
+    KeycloakUserSummary,
     PersonResponse,
 )
 from security import (
-    create_face_auth_token,
     get_current_user,
     require_roles,
 )
+from services.keycloak_admin import (
+    create_keycloak_user,
+    exchange_token_for_user,
+    list_users,
+)
+from services.person_service import get_or_create_person
 from worker.celery_app import celery_app
 
 router = APIRouter()
 
-# Roles asignados al token de face-auth (por defecto "operator").
-FACE_AUTH_DEFAULT_ROLES = os.getenv("FACE_AUTH_DEFAULT_ROLES", "operator").split(",")
-
 #endpoint para autenticar a una persona por su rostro
 #recibe la imágen, la manda al worker que hace el reconocimiento facial y devuelve el personId
 #si la persona con ese personId tiene un keycloak_user_id vinculado,
-#llama a security.py y genera un token local con create_face_auth_token
+#le pide a Keycloak (Token Exchange) un access_token real para ese usuario
 @router.post("/auth/face/login", response_model=FaceLoginResponse)
 def face_login(body: FaceLoginRequest, db: Session = Depends(get_db)):
     task = celery_app.send_task(
@@ -58,17 +63,13 @@ def face_login(body: FaceLoginRequest, db: Session = Depends(get_db)):
             "Asocie un personId con su usuario de Keycloak primero.",
         )
 
-    # Genera un token HS256 firmado localmente (no Keycloak).
-    token = create_face_auth_token(
-        keycloak_user_id=person.keycloak_user_id,
-        email=person.email,
-        preferred_username=f"{person.nombre} {person.apellido}",
-        roles=FACE_AUTH_DEFAULT_ROLES,
-    )
+    # Token Exchange: le pedimos a Keycloak un access_token genuino (RS256)
+    # para este usuario, con sus roles reales, sin necesitar su contraseña.
+    exchanged = exchange_token_for_user(person.keycloak_user_id)
 
     return FaceLoginResponse(
-        access_token=token,
-        expires_in=3600,
+        access_token=exchanged["access_token"],
+        expires_in=exchanged.get("expires_in", 300),
         personId=person.personId,
         nombre=person.nombre,
         apellido=person.apellido,
@@ -129,10 +130,12 @@ def face_verify(
     )
 
 #asociar un personId con un user de keycloak. busca a person, verifica q no tenga otro user id, asigna el user id.
+#si no se manda personId, se busca automaticamente una persona cuyo email coincida con el
+#email del token (autoservicio: cualquier usuario autenticado puede vincular su propia cuenta).
 @router.post("/auth/link-keycloak", response_model=KeycloakLinkResponse)
 def link_keycloak(
-    body: KeycloakLinkRequest,
-    user: dict = Depends(require_roles(["admin", "operator"])),
+    body: Optional[KeycloakLinkRequest] = None,
+    user: dict = Depends(require_roles(["admin", "operator", "viewer"])),
     db: Session = Depends(get_db),
 ):
     keycloak_user_id = user.get("sub")
@@ -149,9 +152,26 @@ def link_keycloak(
             detail=f"Este usuario de Keycloak ya esta vinculado a la persona {existing.personId}",
         )
 
-    person = db.query(Person).filter(Person.personId == body.personId).first()
-    if not person:
-        raise HTTPException(status_code=404, detail="Persona no encontrada")
+    person_id = body.personId if body else None
+    if person_id:
+        person = db.query(Person).filter(Person.personId == person_id).first()
+        if not person:
+            raise HTTPException(status_code=404, detail="Persona no encontrada")
+    else:
+        email = user.get("email")
+        if not email:
+            raise HTTPException(
+                status_code=400,
+                detail="El token no tiene email; no se puede vincular automaticamente. "
+                "Especifica un personId.",
+            )
+        person = db.query(Person).filter(Person.email == email).first()
+        if not person:
+            raise HTTPException(
+                status_code=404,
+                detail="No hay ninguna persona con tu email. Pedile al administrador "
+                "que te cree una primero.",
+            )
 
     # Una persona no puede tener dos vínculos.
     if person.keycloak_user_id:
@@ -197,7 +217,7 @@ def auth_me(
 
 @router.delete("/auth/link-keycloak", status_code=200)
 def unlink_keycloak(
-    user: dict = Depends(require_roles(["admin", "operator"])),
+    user: dict = Depends(require_roles(["admin", "operator", "viewer"])),
     db: Session = Depends(get_db),
 ):
     # Desvincula la persona del usuario de Keycloak.
@@ -213,3 +233,53 @@ def unlink_keycloak(
     person.keycloak_user_id = None
     db.commit()
     return {"message": "Vinculacion eliminada correctamente"}
+
+
+# Alta de usuarios: crea el usuario en Keycloak (username/password/roles) y su
+# Person correspondiente, ya vinculados por keycloak_user_id (sin depender de que
+# los emails coincidan, a diferencia del auto-link de /auth/link-keycloak).
+@router.post("/auth/users", response_model=CreateKeycloakUserResponse, status_code=201)
+def create_user(
+    body: CreateKeycloakUserRequest,
+    db: Session = Depends(get_db),
+    _: dict = Depends(require_roles(["admin"])),
+) -> CreateKeycloakUserResponse:
+    existing_person = db.query(Person).filter(Person.email == body.email).first()
+    if existing_person and existing_person.keycloak_user_id:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Ya existe una persona ({existing_person.personId}) con ese "
+            "email vinculada a otro usuario de Keycloak",
+        )
+
+    keycloak_user_id = create_keycloak_user(
+        username=body.username,
+        email=body.email,
+        password=body.password,
+        roles=body.roles,
+        first_name=body.nombre,
+        last_name=body.apellido,
+    )
+
+    person = get_or_create_person(
+        db,
+        nombre=body.nombre,
+        apellido=body.apellido,
+        email=body.email,
+        keycloak_user_id=keycloak_user_id,
+    )
+
+    return CreateKeycloakUserResponse(
+        keycloak_user_id=keycloak_user_id,
+        username=body.username,
+        email=body.email,
+        roles=body.roles,
+        person=PersonResponse.model_validate(person),
+    )
+
+
+@router.get("/auth/users", response_model=list[KeycloakUserSummary])
+def list_keycloak_users(
+    _: dict = Depends(require_roles(["admin"])),
+) -> list[KeycloakUserSummary]:
+    return [KeycloakUserSummary(**u) for u in list_users()]

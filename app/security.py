@@ -1,6 +1,5 @@
 import os
 import time
-from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional
 
 import httpx
@@ -9,8 +8,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import jwk, jwt
 
 #ESTE ES EL NÚCLEO DE AUTENTICACIÓN Y AUTORIZACIÓN.
-#lee variables de entorno para el keycloak, que serían los tokens que emite ese sistema, y para el
-#face auth local, para el token q se emite cuando hago login facial.
+#lee variables de entorno para keycloak y valida los tokens (RS256) que emite.
 
 # Keycloak OIDC config (desde .env o docker-compose).
 KEYCLOAK_SERVER_URL: str = os.getenv("KEYCLOAK_SERVER_URL", "")
@@ -18,11 +16,6 @@ KEYCLOAK_REALM: str = os.getenv("KEYCLOAK_REALM", "")
 KEYCLOAK_CLIENT_ID: str = os.getenv("KEYCLOAK_CLIENT_ID", "")
 KEYCLOAK_CLIENT_SECRET: str = os.getenv("KEYCLOAK_CLIENT_SECRET", "")
 KEYCLOAK_JWKS_CACHE_TTL: int = int(os.getenv("KEYCLOAK_JWKS_CACHE_TTL", "600"))
-
-# Face auth local (HS256, sin Keycloak).
-FACE_AUTH_SECRET: str = os.getenv("FACE_AUTH_SECRET", "insecure-default-change-me")
-FACE_AUTH_TOKEN_EXPIRATION: int = int(os.getenv("FACE_AUTH_TOKEN_EXPIRATION", "3600"))
-FACE_AUTH_ISSUER: str = "soa-face-auth"
 
 bearer_scheme = HTTPBearer(auto_error=False)
 
@@ -74,12 +67,10 @@ class JWKSClient:
 
 _jwks_client = JWKSClient()
 
-#la función + importane. detecta cuál de los dos tipos de token es, y según eso decide cómo validar
-#si es de keycloack busca la clave pública del cliente, verifica firma, expiración, y q esté en el realm
-#si es el face auth verifica la firma contra face auth secre, expiración, etc
+#valida un token de Keycloak: busca la clave pública del cliente, verifica firma, expiración, y q esté en el realm
 
 def decode_and_validate_jwt(token: str) -> Dict[str, Any]:
-    """Decodifica y valida un JWT. Soporta RS256 (Keycloak) y HS256 (face-auth local)."""
+    """Decodifica y valida un JWT RS256 emitido por Keycloak."""
     try:
         headers = jwt.get_unverified_header(token)
         kid = headers.get("kid")
@@ -116,24 +107,6 @@ def decode_and_validate_jwt(token: str) -> Dict[str, Any]:
                 raise jwt.JWTClaimsError(
                     f"El issuer del token no corresponde al realm '{KEYCLOAK_REALM}'"
                 )
-        elif alg == "HS256":
-            # Token local de face-auth: validar con FACE_AUTH_SECRET.
-            payload = jwt.decode(
-                token,
-                FACE_AUTH_SECRET,
-                algorithms=["HS256"],
-                audience=KEYCLOAK_CLIENT_ID,
-                issuer=FACE_AUTH_ISSUER,
-                options={
-                    "verify_signature": True,
-                    "verify_exp": True,
-                    "verify_iat": True,
-                    "verify_aud": True,
-                    "verify_iss": True,
-                    "require_exp": True,
-                    "require_iss": True,
-                },
-            )
         else:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -164,30 +137,6 @@ def decode_and_validate_jwt(token: str) -> Dict[str, Any]:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-#genera un token jwt local con el keycloak user id, email, username, realm
-def create_face_auth_token(
-    keycloak_user_id: str,
-    email: str,
-    preferred_username: str,
-    roles: Optional[List[str]] = None,
-) -> str:
-    if roles is None:
-        roles = ["viewer"]
-    now = datetime.now(timezone.utc)
-    payload = {
-        "sub": keycloak_user_id,
-        "email": email,
-        "preferred_username": preferred_username,
-        "realm_access": {"roles": roles},
-        "iss": FACE_AUTH_ISSUER,
-        "aud": KEYCLOAK_CLIENT_ID,
-        "iat": now,
-        "exp": now + timedelta(seconds=FACE_AUTH_TOKEN_EXPIRATION),
-        "token_type": "face_auth",
-    }
-    return jwt.encode(payload, FACE_AUTH_SECRET, algorithm="HS256")
-
-
 def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
 ) -> Dict[str, Any]:
@@ -201,24 +150,27 @@ def get_current_user(
     return decode_and_validate_jwt(credentials.credentials)
 
 
+def get_user_roles(user: Dict[str, Any]) -> set:
+    """Extrae el set de roles (realm + client) de un token ya decodificado."""
+    realm_roles: List[str] = (user.get("realm_access") or {}).get("roles") or []
+    resource_roles: List[str] = []
+    if KEYCLOAK_CLIENT_ID:
+        resource_access = user.get("resource_access") or {}
+        client_roles = resource_access.get(KEYCLOAK_CLIENT_ID, {})
+        resource_roles = client_roles.get("roles") or []
+    return set(realm_roles + resource_roles)
+
+
+def user_has_any_role(user: Dict[str, Any], roles: List[str]) -> bool:
+    return bool(get_user_roles(user).intersection(roles))
+
+
 def require_roles(allowed_roles: List[str]) -> callable:
     """Factory de dependencia: requiere que el token tenga al menos uno de los roles listados."""
     def _role_checker(
         user: Dict[str, Any] = Depends(get_current_user),
     ) -> Dict[str, Any]:
-        # Lee roles desde realm_access y resource_access (client-level).
-        realm_roles: List[str] = (
-            (user.get("realm_access") or {}).get("roles") or []
-        )
-        resource_roles: List[str] = []
-        if KEYCLOAK_CLIENT_ID:
-            resource_access = user.get("resource_access") or {}
-            client_roles = resource_access.get(KEYCLOAK_CLIENT_ID, {})
-            resource_roles = client_roles.get("roles") or []
-
-        user_roles: set = set(realm_roles + resource_roles)
-
-        if not user_roles.intersection(allowed_roles):
+        if not user_has_any_role(user, allowed_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail=(

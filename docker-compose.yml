@@ -35,6 +35,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: temp-admin
       KC_HOSTNAME_URL: http://keycloak:8080
       KC_HOSTNAME_STRICT: "false"
+      KC_FEATURES: token-exchange
     command: start-dev
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && exec 3<&- 3>&-"]
@@ -120,7 +121,7 @@ services:
       - api
 
   api:
-    image: antobadami845/soa-api:9.0
+    image: lbiondi733/soa-api:9.1
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
       - MYSQL_USER=${MYSQL_USER}
@@ -132,8 +133,6 @@ services:
       - KEYCLOAK_REALM=${KEYCLOAK_REALM}
       - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
-      - FACE_AUTH_SECRET=${FACE_AUTH_SECRET}
-      - FACE_AUTH_TOKEN_EXPIRATION=${FACE_AUTH_TOKEN_EXPIRATION}
     depends_on:
       db:
         condition: service_healthy
@@ -156,7 +155,7 @@ services:
   # Worker Celery separado: concentra YOLO/OpenCV y sus dependencias nativas
   # Esto evita inflar la imagen HTTP con librerías pesadas que solo sirven para inferencia
   worker:
-    image: twbenjaminvargas/soa-worker:1.1
+    image: lbiondi733/soa-worker:1.2
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
       - MYSQL_USER=${MYSQL_USER}

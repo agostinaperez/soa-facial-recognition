@@ -54,6 +54,25 @@
       >
         Piedra, Papel o Tijera
       </v-btn>
+      <v-btn
+        v-if="auth.isAdmin"
+        :to="{ name: 'users' }"
+        variant="text"
+        size="small"
+        prepend-icon="mdi-account-cog"
+        :active="route.name === 'users'"
+      >
+        Usuarios
+      </v-btn>
+      <v-btn
+        :to="{ name: 'profile' }"
+        variant="text"
+        size="small"
+        prepend-icon="mdi-account-circle-outline"
+        :active="route.name === 'profile'"
+      >
+        Mi Perfil
+      </v-btn>
 
       <v-divider vertical class="mx-2 my-3" />
 
@@ -66,7 +85,7 @@
       >
         {{ auth.user?.preferred_username }}
         <span class="ml-1 opacity-60">
-          {{ auth.user?.roles?.find(r => ['admin','operator','viewer'].includes(r)) }}
+          {{ topRole }}
         </span>
       </v-chip>
 
@@ -87,10 +106,12 @@ const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 
+// Orden de prioridad (mayor a menor jerarquía): el primero que el usuario tenga es el que se muestra.
+const topRole = computed(() => ['admin', 'operator', 'viewer'].find(r => auth.user?.roles?.includes(r)))
+
 const roleColor = computed(() => {
-  const role = auth.user?.roles?.find(r => ['admin','operator','viewer'].includes(r))
-  if (role === 'admin') return 'error'
-  if (role === 'operator') return 'primary'
+  if (topRole.value === 'admin') return 'error'
+  if (topRole.value === 'operator') return 'primary'
   return 'secondary'
 })
 

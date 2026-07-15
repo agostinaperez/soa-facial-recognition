@@ -110,7 +110,7 @@ class RPSPlayResponse(BaseModel):
 
 
 class KeycloakLinkRequest(BaseModel):
-    personId: str
+    personId: Optional[str] = None
 
 
 class KeycloakLinkResponse(BaseModel):
@@ -156,3 +156,27 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+
+
+class CreateKeycloakUserRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+    nombre: str
+    apellido: str
+    roles: list[str] = ["viewer"]
+
+
+class CreateKeycloakUserResponse(BaseModel):
+    keycloak_user_id: str
+    username: str
+    email: str
+    roles: list[str]
+    person: PersonResponse
+
+
+class KeycloakUserSummary(BaseModel):
+    id: str
+    username: Optional[str] = None
+    email: Optional[str] = None
+    roles: list[str] = []
