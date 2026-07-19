@@ -47,13 +47,13 @@ app.add_middleware(
 container_id = socket.gethostname()
 
 # Inicializar el cliente de StatsD con el prefijo del contenedor
-statsd = StatsClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT, prefix=f'api_{container_id}')
+statsd = StatsClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT, prefix=f'api.{container_id}')
 
 # Middleware para monitoreo de throughput, latencia y errores
 @app.middleware("http")
 async def monitor_metrics_middleware(request: Request, call_next):
     # Throughput: Contamos que entró una petición a esta instancia específica
-    statsd.incr('throughput_incoming')
+    statsd.incr('throughput.incoming')
     
     # Contador por servicio consultado
     endpoint_path = request.url.path.strip("/").replace("/", "_")
@@ -63,7 +63,7 @@ async def monitor_metrics_middleware(request: Request, call_next):
         endpoint_path = "root"
         
     # Incrementamos el contador específico de este endpoint
-    statsd.incr(f'endpoint_{endpoint_path}_queries')
+    statsd.incr(f'endpoint.{endpoint_path}.queries')
     
     start_time = time.time()
     
@@ -76,9 +76,9 @@ async def monitor_metrics_middleware(request: Request, call_next):
     
     # Throughput exitoso vs errores
     if response.status_code == 200:
-        statsd.incr('throughput_success')
+        statsd.incr('throughput.success')
     elif response.status_code >= 400:
-        statsd.incr(f'errors_{response.status_code}')
+        statsd.incr(f'errors.{response.status_code}')
         
     return response
 
