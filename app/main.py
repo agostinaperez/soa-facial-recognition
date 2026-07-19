@@ -2,6 +2,8 @@
 #Punto de entrada de la app FastAPI.
 #Inicializa la app, monta los routers y crea las tablas en la db.
 
+from sqlalchemy.exc import OperationalError, DatabaseError
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -45,13 +47,23 @@ app.add_middleware(
 container_id = socket.gethostname()
 
 # Inicializar el cliente de StatsD con el prefijo del contenedor
-statsd = StatsClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT, prefix=f'api.{container_id}')
+statsd = StatsClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT, prefix=f'api_{container_id}')
 
 # Middleware para monitoreo de throughput, latencia y errores
 @app.middleware("http")
 async def monitor_metrics_middleware(request: Request, call_next):
     # Throughput: Contamos que entró una petición a esta instancia específica
-    statsd.incr('throughput.incoming')
+    statsd.incr('throughput_incoming')
+    
+    # Contador por servicio consultado
+    endpoint_path = request.url.path.strip("/").replace("/", "_")
+    
+    # Si la ruta quedó vacía (la raíz del sitio "/"), le asignamos por defecto el nombre "root"
+    if not endpoint_path:
+        endpoint_path = "root"
+        
+    # Incrementamos el contador específico de este endpoint
+    statsd.incr(f'endpoint_{endpoint_path}_queries')
     
     start_time = time.time()
     
@@ -64,9 +76,9 @@ async def monitor_metrics_middleware(request: Request, call_next):
     
     # Throughput exitoso vs errores
     if response.status_code == 200:
-        statsd.incr('throughput.success')
+        statsd.incr('throughput_success')
     elif response.status_code >= 400:
-        statsd.incr(f'errors.{response.status_code}')
+        statsd.incr(f'errors_{response.status_code}')
         
     return response
 
@@ -83,7 +95,22 @@ app.include_router(srps_router, prefix="/api/v1", tags=["Rock Paper Scissors"])
 def on_startup() -> None:
     
     # Crea las tablas en MySQL al iniciar la aplicación
-    Base.metadata.create_all(bind=engine)
+    retries = 5
+    while retries > 0:
+        try:
+            print("Intentando crear y sincronizar tablas en MySQL...")
+            # Crea las tablas en MySQL al iniciar la aplicación
+            Base.metadata.create_all(bind=engine)
+            print("¡Conexión exitosa a MySQL y tablas sincronizadas correctamente!")
+            break
+        except (OperationalError, DatabaseError) as e:
+            retries -= 1
+            print(f"MySQL no responde aún ({retries} reintentos restantes)... Esperando 3 segundos.")
+            time.sleep(3)
+            
+    if retries == 0:
+        print("ERROR CRÍTICO: No se pudo conectar a MySQL tras varios intentos.")
+        raise RuntimeError("No se pudo establecer conexión con la base de datos MySQL.")
 
 
 @app.get("/health", tags=["Monitoreo"])
