@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: 'Tableros del TP'
+    orgId: 1
+    folder: ''
+    type: file
+    disableDeletion: false
+    editable: true
+    options:
+      # Le decimos que escanee la misma carpeta interna donde está parado
+      path: /etc/grafana/provisioning/dashboards

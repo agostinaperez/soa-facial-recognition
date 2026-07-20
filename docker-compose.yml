@@ -36,6 +36,7 @@ services:
       KC_HOSTNAME_URL: http://keycloak:8080
       KC_HOSTNAME_STRICT: "false"
       KC_FEATURES: token-exchange
+      KC_BOOTSTRAP_ADMIN_LOCAL_ACCESS_ALLOWED: "false"
     command: start-dev
     healthcheck:
       test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/8080 && exec 3<&- 3>&-"]
@@ -121,7 +122,7 @@ services:
       - api
 
   api:
-    image: lbiondi733/soa-api:9.1
+    image: twbenjaminvargas/soa-api:1.4
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
       - MYSQL_USER=${MYSQL_USER}
@@ -133,6 +134,7 @@ services:
       - KEYCLOAK_REALM=${KEYCLOAK_REALM}
       - KEYCLOAK_CLIENT_ID=${KEYCLOAK_CLIENT_ID}
       - KEYCLOAK_CLIENT_SECRET=${KEYCLOAK_CLIENT_SECRET}
+      - TELEGRAF_HOST=telegraf
     depends_on:
       db:
         condition: service_healthy
@@ -141,6 +143,8 @@ services:
       seaweed_master:
         condition: service_started
       seaweed_volume:
+        condition: service_started
+      telegraf:  
         condition: service_started
     volumes:
       - ./weights:/app/weights
@@ -155,7 +159,7 @@ services:
   # Worker Celery separado: concentra YOLO/OpenCV y sus dependencias nativas
   # Esto evita inflar la imagen HTTP con librerías pesadas que solo sirven para inferencia
   worker:
-    image: lbiondi733/soa-worker:1.2
+    image: twbenjaminvargas/soa-worker:1.2
     environment:
       - SEAWEED_MASTER=http://seaweed_master:9333
       - MYSQL_USER=${MYSQL_USER}
@@ -165,6 +169,7 @@ services:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - AZURE_FACE_ENDPOINT=${AZURE_FACE_ENDPOINT}
       - AZURE_FACE_KEY=${AZURE_FACE_KEY}
+      - TELEGRAF_HOST=telegraf
        # Enviar confirmación (ACK) SOLO cuando la función finalice con éxito
       - CELERY_TASK_ACKS_LATE=True
       # Procesar estrictamente de a 1 tarea a la vez (evita inflar RAM con YOLO)
@@ -182,8 +187,54 @@ services:
         condition: service_started
     volumes:
       - ./weights:/app/weights
+    
+  
+  # Base de datos de series temporales para métricas
+  influxdb:
+    image: influxdb:1.8 # InfluxQL más sencillo de configurar
+    container_name: soa_influxdb
+    environment:
+      - INFLUXDB_DB=metrics_db
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/ping"]
+      interval: 5s
+      timeout: 2s
+      retries: 5
+
+  # Colector de métricas (recibe UDP de la API/Worker y lee métricas de Docker)
+  telegraf:
+    image: telegraf:alpine
+    container_name: soa_telegraf
+    user: root
+    group_add:
+      - "${DOCKER_GID:-999}"
+    volumes:
+      - ./telegraf.conf:/etc/telegraf/telegraf.conf:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro # Leer CPU/Memoria del sistema
+    depends_on:
+      influxdb:
+        condition: service_healthy
+
+  # Visualización
+  grafana:
+    image: grafana/grafana:latest
+    container_name: soa_grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./grafana/datasources:/etc/grafana/provisioning/datasources
+      - ./grafana/dashboards:/etc/grafana/provisioning/dashboards
+    ports:
+      - "3000:3000"
+    depends_on:
+      - influxdb
 
 volumes:
   mysql_data:
   seaweed_data:
   keycloak_db_data:
+  influxdb_data:
+  grafana_data:
