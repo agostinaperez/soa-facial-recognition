@@ -1,9 +1,12 @@
 import base64
 import logging
 import random
-
+import os
 import face_recognition as fr
 import numpy as np
+from statsd import StatsClient
+import socket
+import time
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +17,12 @@ from services.faiss_index import build_index, search as faiss_search
 from services.seaweed_ds import get_image
 from worker.celery_app import celery_app
 
+
+TELEGRAF_HOST = os.getenv("TELEGRAF_HOST", "telegraf")
+TELEGRAF_PORT = int(os.getenv("TELEGRAF_PORT", 8125))
+# Usamos el hostname del contenedor worker para identificar de qué réplica vienen las métricas
+container_id = socket.gethostname()
+statsd = StatsClient(host=TELEGRAF_HOST, port=TELEGRAF_PORT, prefix=f'worker.{container_id}')
 
 @celery_app.task
 def run_inference(frame_id: str) -> dict:
@@ -36,7 +45,8 @@ def run_inference(frame_id: str) -> dict:
         Exception: Si ocurre un fallo de red, transaccional o en la inferencia del 
                    modelo. Genera un rollback automático de la transacción.
     """
-
+    statsd.incr('yolo.inference_requests')
+        
     db = SessionLocal()
     try:
         from models.entities import Frame
@@ -51,9 +61,13 @@ def run_inference(frame_id: str) -> dict:
         image_bytes = get_image(frame.image_url)
 
         # Ejecutar inferencia YOLO
+        yolo_start = time.time()
         detections = predict(frame.model_id, image_bytes)
+        yolo_duration = (time.time() - yolo_start) * 1000
+        statsd.timing('yolo.inference_time', yolo_duration)
         if not detections:
             logger.warning("Frame %s: no se detectaron objetos con el umbral de confianza configurado", frame_id)
+            statsd.incr('yolo.inference_empty')
 
         from services.cloud_detection import crop_face, enrich_face
 
@@ -108,7 +122,10 @@ def generate_embeddings_task(person_id: str, task_ids: list[str]) -> dict:
                 continue
             try:
                 image_bytes = get_image(task.seaweed_fid)
+                embed_start = time.time()
                 vector = generate_face_embedding(image_bytes)
+                embed_duration = (time.time() - embed_start) * 1000
+                statsd.timing('recognition.embedding_time', embed_duration)
                 if vector is None:
                     task.status = "Fallido"
                 else:
@@ -137,7 +154,10 @@ def face_recognition_task(image_b64: str, threshold: float) -> dict:
     image_bytes = base64.b64decode(image_b64)
     
     try:
+        embed_start = time.time()
         query_vector = generate_face_embedding(image_bytes)
+        embed_duration = (time.time() - embed_start) * 1000
+        statsd.timing('recognition.embedding_time', embed_duration)
     except ValueError as e:
         return {
             "error": "invalid_image",
@@ -161,9 +181,14 @@ def face_recognition_task(image_b64: str, threshold: float) -> dict:
         # Construimos el índice FAISS en memoria con todos los embeddings de la BD.
         # El índice se reconstruye en cada llamada para garantizar consistencia con MySQL.
         index, pid_list = build_index(vectors, person_ids_list)
-
+        
+        comp_start = time.time()
         # Buscamos el vecino más cercano al query_vector dentro del índice FAISS.
         results = faiss_search(index, pid_list, query_vector, k=1)
+        
+        comp_duration = (time.time() - comp_start) * 1000
+        
+        statsd.timing('recognition.comparison_time', comp_duration)
 
         best_person_id, l2_sq_dist = results[0]
 
@@ -174,12 +199,15 @@ def face_recognition_task(image_b64: str, threshold: float) -> dict:
 
         if confidence >= threshold:
             person = db.query(Person).filter(Person.personId == best_person_id).first()
+            statsd.incr('recognition.match_success')
             return {
                 "personId": person.personId,
                 "nombre": person.nombre,
                 "apellido": person.apellido,
                 "confidence": round(confidence, 4),
             }
+        
+        statsd.incr('recognition.match_failed')
 
         return {"personId": None, "confidence": round(confidence, 4)}
     finally:
