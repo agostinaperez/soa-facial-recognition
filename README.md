@@ -11,6 +11,7 @@ Sistema de análisis de fotogramas e inferencia con YOLO, expuesto mediante APIs
 - SeaweedFS — almacenamiento de objetos distribuido
 - Docker Compose — infraestructura (MySQL, Redis, SeaweedFS)
 - Keycloak para protección de endpoints
+- Grafana + telegraf + influxDB para recoleccion y muestra de metricas en tiempo real
 
 ## Arquitectura
 
@@ -64,6 +65,18 @@ Usuarios creados: `admin/admin123`, `operator/operator123`, `viewer/viewer123`.
  ```bash
  docker compose up -d --scale seaweed_volume=<n° volumenes de seaweed> --scale worker=<n° workers> --scale api=<n° apis>
  ```
+# Metricas y Dashboards
+Los dashboards son accesibles desde la UI de grafana (http://localhost:3000). Deberas dirigirte al apartado dashboards y seleccionar "SOA Face Recognition".
+
+
+Es posible que algunos datos no se muestren en los graficos. Esto ocurre porque la base de datos de InfluxDB aun no tiene registros del sistema. Con el uso estos datos iran completandose y mostrandose adecuadamente.
+
+
+**Importante:** Recuerda cargar la variable de entorno DOCKER_GID en .env con ID numérico del grupo docker en tu computadora, necesario para darle permisos al conenedor Telegraf de leer las métricas de Docker.
+El siguiente comando te brindara dicho numero:
+```
+getent group docker | cut -d: -f3
+```
 
 ## Endpoints
 
